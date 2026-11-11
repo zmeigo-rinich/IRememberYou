@@ -1,6 +1,6 @@
 # I remember you!
 
-**English** · [Русский](README.ru.md)
+**English** · [Русский](README.ru.md) · [Changelog](CHANGELOG.md)
 
 An Elder Scrolls Online addon that remembers **players**, not just names.
 

@@ -770,37 +770,47 @@ merge A/B → C/D → C/B; `wipe confirm` стирает базу и сбрас�
 
 ## 16. Чек-лист релиза
 
-1. Поднять `IRY.version` в `core/constants.lua`.
-2. Поднять `## Version:` и `## AddOnVersion:` в `IRememberYou.txt`
-   (`<major>.<minor>.<patch>` → `<major*10000 + minor*100 + patch>`; `0.3.0`
-   даёт `300`).
-3. Обновить раздел изменений в **обоих** `README.md` и `README.ru.md`.
-4. Убедиться, что порядок загрузки в манифесте всё ещё соответствует
-   зависимостям.
-5. Статические проверки: баланс блоков Lua, одинаковые наборы ключей языков,
-   валидный XML, UTF-8 без BOM.
-6. Упаковывать папку, а не её содержимое:
-   `Compress-Archive -Path IRememberYou -DestinationPath dist/IRememberYou-<version>.zip`.
-   В архиве на корне должен быть `IRememberYou/IRememberYou.txt`.
-7. Не класть `dist/` внутрь папки аддона.
+Версия имеет один источник истины — git-тег. `build.ps1` записывает её в
+`core/constants.lua` и `IRememberYou.txt`, а `.github/workflows/release.yml`
+повторно запускает тот же скрипт в режиме `-VerifyOnly` и публикует архив при
+пуше тега `v*`.
 
-Предлагаемые проверки на машине без интерпретатора Lua:
+1. Описать релиз под новым заголовком `## [<version>]` в `CHANGELOG.md`.
+   Тело GitHub-релиза берётся из этого раздела, поэтому тег без него валит
+   workflow. Руками версию больше нигде не править.
+2. Запустить `.\build.ps1 -Version <version>`. Скрипт запишет `IRY.version`,
+   `## Version:` и `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
+   `0.3.0` даёт `300`), прогонит все статические проверки ниже и положит
+   `..\Output\IRememberYou-<version>.zip`.
+3. Закоммитить запись в changelog вместе с бампом версии, затем поставить тег:
+   `git tag v<version> && git push origin main --tags`.
+4. CI проверит, что тег совпадает с закоммиченными файлами, пересоберёт архив
+   и прикрепит его к GitHub-релизу с именем тега.
+5. Загрузить тот же архив на ESOUI вручную — публичного API загрузки у сайта
+   нет.
+6. Прогнать живой чек-лист выше (§15) по этому архиву до анонса.
 
-```powershell
-# Баланс блоков Lua (function/if/do против end)
-.\lualint.ps1 -Path .
+Флаги `build.ps1`: `-Version` (по умолчанию — точный тег на `HEAD`, иначе
+версия из манифеста), `-VerifyOnly` (ничего не писать; падать при любом
+расхождении), `-NoZip`, `-OutputPath <dir>` (по умолчанию `..\Output`),
+`-ReleaseNotesPath <file>`, `-LuacPath <exe>`, `-SkipLuaCheck`.
 
-# Ключи IRY.L: определены против использованных, и паритет EN/RU
-.\langcheck.ps1
-.\keydiff.ps1
+Статические проверки, локально и в CI:
 
-# Корректность XML
-[xml](Get-Content -Raw ui\browser.xml) | Out-Null
-[xml](Get-Content -Raw bindings.xml)   | Out-Null
-```
+* `luac -p` для каждого `.lua` (локально —
+  `Input/lua-5.1.5_Win64_bin/luac5.1.exe`, в CI — `lua5.1` из apt; путь можно
+  переопределить переменной `LUAC`);
+* каждый `.xml` разбирается как XML;
+* каждый `.lua`/`.xml`/`.txt`/`.md` — валидный UTF-8 без BOM;
+* EN и RU определяют ровно одинаковый набор ключей `IRY.L`, в `HELP`
+  одинаковое число строк, и каждый использованный в коде `IRY.L.*`
+  существует;
+* каждый путь из `IRememberYou.txt` существует;
+* в архиве на корне лежит `IRememberYou/IRememberYou.txt`, и в нём нет
+  `.git`, `.github`, `.gitignore`, `.gitattributes` или `build.ps1`.
 
-На машине с Lua `luac -p` для каждого файла строго лучше любых эвристических
-скриптов.
+`build.ps1` и `.github/` исключаются из архива автоматически, поэтому zip
+можно загружать как есть.
 
 ---
 

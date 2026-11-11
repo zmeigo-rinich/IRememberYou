@@ -1,6 +1,6 @@
 # I remember you!
 
-[English](README.md) · **Русский**
+[English](README.md) · **Русский** · [Список изменений](CHANGELOG.md)
 
 Аддон для The Elder Scrolls Online, который помнит **игроков**, а не только
 имена.

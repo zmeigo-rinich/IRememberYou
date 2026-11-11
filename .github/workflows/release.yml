@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends lua5.1
+
+      - name: Verify metadata and sources
+        shell: pwsh
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:REF_TYPE -eq 'tag') {
+            $version = $env:REF_NAME.TrimStart('v').Trim()
+            ./build.ps1 -Version $version -VerifyOnly -NoZip
+          }
+          else {
+            ./build.ps1 -VerifyOnly -NoZip
+          }
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends lua5.1
+
+      - name: Verify tag and build the zip
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          $version = $env:TAG_NAME.TrimStart('v').Trim()
+          if ($version -ne $env:TAG_NAME) { Write-Host "tag: $env:TAG_NAME -> version: $version" }
+          ./build.ps1 -Version $version -VerifyOnly `
+            -OutputPath "$env:RUNNER_TEMP/dist" `
+            -ReleaseNotesPath "$env:RUNNER_TEMP/release-notes.md"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: I remember you! ${{ github.ref_name }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          files: ${{ runner.temp }}/dist/IRememberYou-*.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: false

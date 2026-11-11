@@ -744,36 +744,45 @@ so it cannot be checked statically).
 
 ## 16. Release checklist
 
-1. Bump `IRY.version` in `core/constants.lua`.
-2. Bump `## Version:` and `## AddOnVersion:` in `IRememberYou.txt`
-   (`<major>.<minor>.<patch>` → `<major*10000 + minor*100 + patch>`; `0.3.0`
-   becomes `300`).
-3. Update the changelog section in **both** `README.md` and `README.ru.md`.
-4. Confirm the manifest load order still matches the dependency reality.
-5. Static checks: balanced Lua blocks, identical language key sets, valid XML,
-   UTF-8 without BOM.
-6. Package the folder, not its contents:
-   `Compress-Archive -Path IRememberYou -DestinationPath dist/IRememberYou-<version>.zip`.
-   The archive must contain `IRememberYou/IRememberYou.txt` at its root.
-7. Do not ship `dist/` inside the addon folder.
+The version has a single source of truth: the git tag. `build.ps1` writes it
+into `core/constants.lua` and `IRememberYou.txt`; `.github/workflows/release.yml`
+re-runs the same script in `-VerifyOnly` mode and publishes the zip when a `v*`
+tag is pushed.
 
-Suggested checks on a machine without a Lua interpreter:
+1. Describe the release under a new `## [<version>]` heading in `CHANGELOG.md`.
+   The GitHub release body is extracted from that section, so a tag without it
+   fails the workflow. Do not edit the version anywhere else by hand.
+2. Run `.\build.ps1 -Version <version>`. It writes `IRY.version`,
+   `## Version:` and `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
+   `0.3.0` becomes `300`), runs every static check below, and writes
+   `..\Output\IRememberYou-<version>.zip`.
+3. Commit the changelog entry and the version bump together, then create the
+   tag: `git tag v<version> && git push origin main --tags`.
+4. CI verifies that the tag matches the committed files, rebuilds the zip and
+   attaches it to a GitHub release named after the tag.
+5. Upload the same zip to ESOUI by hand — the site has no public upload API.
+6. Run the live-client checklist above (§15) against that zip before announcing
+   it.
 
-```powershell
-# Lua block balance (functions/if/do vs end)
-.\lualint.ps1 -Path .
+`build.ps1` flags: `-Version` (default: the exact tag on `HEAD`, else the
+manifest version), `-VerifyOnly` (never write; fail on any mismatch), `-NoZip`,
+`-OutputPath <dir>` (default `..\Output`), `-ReleaseNotesPath <file>`,
+`-LuacPath <exe>`, `-SkipLuaCheck`.
 
-# IRY.L keys defined vs used, and EN vs RU parity
-.\langcheck.ps1
-.\keydiff.ps1
+Static checks, run locally and in CI:
 
-# XML well-formedness
-[xml](Get-Content -Raw ui\browser.xml) | Out-Null
-[xml](Get-Content -Raw bindings.xml)   | Out-Null
-```
+* `luac -p` on every `.lua` file (bundled `Input/lua-5.1.5_Win64_bin/luac5.1.exe`
+  locally, `lua5.1` from apt in CI; set `LUAC` to override);
+* every `.xml` parses as XML;
+* every `.lua`/`.xml`/`.txt`/`.md` is valid UTF-8 without BOM;
+* EN and RU define exactly the same `IRY.L` keys, `HELP` has the same line
+  count, and every `IRY.L.*` used in code exists;
+* every path listed in `IRememberYou.txt` exists;
+* the zip has `IRememberYou/IRememberYou.txt` at its root and contains none of
+  `.git`, `.github`, `.gitignore`, `.gitattributes` or `build.ps1`.
 
-On a machine with Lua, `luac -p` on every file is strictly better than any
-heuristic script.
+`build.ps1` and `.github/` are excluded from the zip automatically, so the
+archive can be uploaded as is.
 
 ---
 
