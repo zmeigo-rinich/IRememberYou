@@ -1,0 +1,9 @@
+<Bindings>
+  <Layer name="General">
+    <Category name="I remember you!">
+      <Action name="IRY_TOGGLE_BROWSER">
+        <Down>IRY.Browser:Toggle()</Down>
+      </Action>
+    </Category>
+  </Layer>
+</Bindings>

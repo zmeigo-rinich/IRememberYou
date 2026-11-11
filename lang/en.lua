@@ -1,0 +1,186 @@
+--[[
+    I remember you! -- English strings.
+
+    Plain Lua table instead of SafeAddString: the addon only needs a handful
+    of user facing strings, and this keeps localization in one obvious place.
+]]
+
+IRY.L = {
+    LOADED       = "%s v%s loaded. Type /pa for commands.",
+    API_MISMATCH = "API version %s is outside the supported list. The addon will still try to run.",
+
+    HELP = {
+        "commands:",
+        "  /pa who [name|id]        show a player entity (no argument: current target)",
+        "  /pa list [n]             list known players",
+        "  /pa rename <id> <name>   set a custom display name",
+        "  /pa reset <id>           reset the name to the first @account",
+        "  /pa forget <id>          delete one player entity",
+        "  /pa merge <id> <id>      merge two entities",
+        "  /pa undo <id>            undo a merge (id of the absorbed entity)",
+        "  /pa pending              links waiting for confirmation",
+        "  /pa yes [n]              confirm a pending link (default: the first)",
+        "  /pa no [n]               reject a pending link",
+        "  /pa browse               open the player browser window",
+        "  /pa count                number of known players",
+        "  /pa purge [days]         drop non-custom players last seen longer ago",
+        "  /pa debug on|off         toggle debug output",
+        "  /pa debug fake <acc> <char>",
+        "  /pa debug bridge <acc> <char>",
+        "  /pa debug conflict       simulate the A/B  ->  C/D  ->  C/B case",
+        "  /pa debug dump <id>      dump the raw entity",
+        "  /pa debug wipe confirm   erase the whole database",
+    },
+
+    UNKNOWN_COMMAND = "Unknown command: %s. Type /pa for help.",
+    NOT_FOUND       = "Player not found: %s",
+    ID_NOT_FOUND    = "No entity with id %s",
+    NO_PLAYERS      = "The database is empty. Nothing has been observed yet.",
+
+    COUNT           = "Known players: %d",
+    LIST_HEADER     = "Known players (%d, most recent first):",
+    LIST_LINE       = "  #%d  %s%s  (updated %s)",
+
+    WHO_HEADER      = "#%d  %s%s",
+    WHO_ALIAS       = "  account %s  [%s/%s]  last seen %s",
+    WHO_CHARACTER   = "  character %s  last seen %s",
+    WHO_NOTES       = "  notes: %s",
+
+    CUSTOM          = "  (custom)",
+    DEFAULT         = "  (default)",
+
+    RENAMED         = "#%d renamed to '%s'.",
+    RENAME_FAILED   = "Bad display name: it is empty or contains forbidden characters.",
+    RESET_NAME      = "#%d display name reset to '%s'.",
+    RESET_FAILED    = "Could not reset the name of #%d.",
+    FORGOT          = "Player #%d forgotten.",
+    FORGET_FAILED   = "Cannot forget player #%d.",
+    FORGET_MERGED   = "#%d was merged into another player. Run /pa undo %d first.",
+    FORGET_LOCKED   = "#%d contains merged players. Undo those merges first (/pa undo <id>).",
+
+    SAME_PLAYER     = "Both ids point to the same entity (#%d).",
+    MERGED          = "Merged #%d into #%d.",
+    MERGE_FAILED    = "Merge failed.",
+    UNDONE          = "Merge of #%d into #%d undone.",
+    NOT_MERGED      = "#%d is not a merged tombstone.",
+    CANNOT_UNDO     = "Cannot undo #%d.",
+
+    DEBUG_ON        = "Debug output enabled.",
+    DEBUG_OFF       = "Debug output disabled.",
+    DEBUG_FAKE      = "fake observation: %s + %s -> #%d (%s)",
+    DEBUG_CONFLICT  = "conflict test: #%d + #%d -> #%d (%s)",
+    DEBUG_BRIDGE    = "bridge observation: %s + %s -> #%d (%s)",
+
+    ACCOUNT_LINKED  = "ID change: %s -> %s is %s (#%d, %s).",
+    MERGED_AUTO     = "Character %s: %s and %s are one player. Merged into %s (#%d). /pa undo %d",
+
+    PENDING_ADDED   = "Pending #%d: %s looks like %s (#%d). /pa yes %d | /pa no %d",
+    PENDING_NONE    = "Nothing to confirm.",
+    PENDING_HEADER  = "Pending confirmations (%d):",
+    PENDING_LINE    = "  #%d  %s  ->  %s (#%d)  [%s]",
+    PENDING_APPROVED = "Pending #%d applied.",
+    PENDING_REJECTED = "Pending #%d rejected.",
+    PENDING_GONE    = "Pending #%d no longer exists.",
+    WIPED           = "Database wiped.",
+    WIPE_NEEDS_CONFIRM = "This erases everything. Run: /pa debug wipe confirm",
+    PURGED          = "Removed %d players not seen for %d days.",
+    PURGE_NONE      = "Nothing older than %d days.",
+    PURGE_USAGE     = "Usage: /pa purge [days]",
+
+    USAGE_TWO_IDS   = "Usage: /pa %s <id> <id>",
+    USAGE_ONE_ID    = "Usage: /pa %s <id>",
+    USAGE_RENAME    = "Usage: /pa rename <id> <name>",
+    USAGE_FAKE      = "Usage: /pa debug fake <account> <character>",
+
+    -- Browser window ----------------------------------------------------------
+    BTN_PLAYERS     = "Players",
+    BTN_PENDING     = "Pending",
+    BTN_RENAME      = "Rename",
+    BTN_RESET       = "Reset",
+    BTN_MERGE       = "Merge",
+    BTN_UNDO        = "Undo",
+    BTN_YES         = "Yes",
+    BTN_NO          = "No",
+
+    HEADER_ID       = "#",
+    HEADER_NAME     = "Name",
+    HEADER_META     = "Accounts / characters",
+    HEADER_SEEN     = "Last seen",
+
+    BROWSER_COUNT   = "%d in view, %d pending",
+    BROWSER_PAGE    = "page %d of %d",
+    BROWSER_SELECT  = "Select a row to see its details.",
+    BROWSER_MERGE_PROMPT = "merge with #%d: pick the second player, then press Merge again",
+    BROWSER_NO_UNDO = "Nothing to undo.",
+    BTN_PURGE       = "Purge",
+    BROWSER_SUMMARY = "%d accounts / %d characters",
+
+    DETAIL_TITLE    = "#%d  %s",
+    DETAIL_ACCOUNTS = "Accounts",
+    DETAIL_CHARACTERS = "Characters",
+    DETAIL_NO_ACCOUNTS = "no accounts recorded",
+    DETAIL_NO_CHARACTERS = "no characters recorded",
+    DETAIL_HINT     = "mouse wheel: scroll through the list",
+
+    -- Settings panel ----------------------------------------------------------
+    OPT_DESC        = "Remembers players across @account and character renames. The settings below are stored account-wide.",
+    OPT_OPEN_LIST   = "Open the player list",
+    OPT_OPEN_LIST_TIP = "Shows every remembered player, with search, rename, merge and pending confirmations. Escape closes it. Same as /pa browse.",
+    OPT_SEC_TARGET  = "Target frame",
+    OPT_TARGET_NAME = "Replace the target name",
+    OPT_TARGET_NAME_TIP = "Show the remembered name instead of the current @account in the reticle target frame.",
+    OPT_TARGET_CAPTION = "Replace the target caption",
+    OPT_TARGET_CAPTION_TIP = "Rebuild the line under the name as character name plus title.",
+    OPT_HIDE_CAPTION = "Hide the target caption",
+    OPT_HIDE_CAPTION_TIP = "Hide the line under the name completely, whatever the game put there.",
+
+    OPT_SEC_CHAT    = "Chat",
+    OPT_ANNOTATE_CHAT = "Add the remembered name to player links",
+    OPT_ANNOTATE_CHAT_TIP = "Appends ' (Name)' inside chat links so a renamed @account stays recognisable. Local display only: other players see nothing.",
+    OPT_ANNOTATE_KILLFEED = "Annotate PvP kill messages",
+    OPT_ANNOTATE_KILLFEED_TIP = "Adds remembered names to kill feed notifications.",
+    OPT_ANNOTATE_SOCIAL = "Add the remembered name to friends and guild lists",
+    OPT_ANNOTATE_SOCIAL_TIP = "Appends ' (Name)' to the account name in the friends list and guild roster. Display only: the account name itself is not replaced.",
+
+    OPT_SEC_DATA    = "Data collection",
+    OPT_CAPTURE_TARGET = "Learn from the reticle target",
+    OPT_CAPTURE_TARGET_TIP = "Records the @account and character of every player you point at.",
+    OPT_CAPTURE_GROUP = "Learn from the group",
+    OPT_CAPTURE_GROUP_TIP = "Records group members and their characters when the game reports them.",
+    OPT_CAPTURE_FRIENDS = "Learn from friends",
+    OPT_CAPTURE_FRIENDS_TIP = "Every friend in the list may create a player, online or offline. Offline friends contribute their last known character.",
+    OPT_CAPTURE_GUILD = "Learn from the guild roster",
+    OPT_CAPTURE_GUILD_TIP = "Only enriches existing players, never creates new ones.",
+    OPT_CAPTURE_KILLFEED = "Learn from the kill feed",
+    OPT_CAPTURE_KILLFEED_TIP = "Uses PvP death messages as an extra source of account and character pairs.",
+    OPT_IGNORE_SELF = "Never remember yourself",
+    OPT_IGNORE_SELF_TIP = "Ignores observations of your own account and character, whatever the source.",
+    OPT_POLL_TARGET = "Re-read the target on a timer",
+    OPT_POLL_TARGET_TIP = "Notices a silent @account change on the same target. One unit query per interval.",
+    OPT_POLL_INTERVAL = "Target poll interval, ms",
+    OPT_POLL_INTERVAL_TIP = "How often the current target is re-read. 1000 ms is a good default.",
+
+    OPT_SEC_LINKS   = "Linking and confirmation",
+    OPT_NOTIFY_LEVEL = "ID change notifications",
+    OPT_NOTIFY_LEVEL_TIP = "Off: never. Confirmed: only friend and group evidence. Everything: every guess.",
+    NOTIFY_OFF      = "Off",
+    NOTIFY_CONFIRMED = "Confirmed only",
+    NOTIFY_ALL      = "Everything",
+    OPT_AUTO_ACCEPT = "Accept probable links without asking",
+    OPT_AUTO_ACCEPT_TIP = "A new @account seen with a known character is linked immediately instead of waiting for /pa yes.",
+    OPT_AUTO_MERGE  = "Merge conflicting players automatically",
+    OPT_AUTO_MERGE_TIP = "When one character shows up under two accounts, merge the two entities at once. /pa undo still works.",
+
+    OPT_SEC_MAINT   = "Maintenance",
+    OPT_PURGE_DAYS  = "Forget players after, days",
+    OPT_PURGE_DAYS_TIP = "Only players without a custom name are removed. 0 disables automatic cleanup.",
+    OPT_PURGE_NOW   = "Forget old players now",
+    OPT_PURGE_NOW_TIP = "Applies the retention period above immediately.",
+    OPT_DEBUG       = "Debug output",
+    OPT_DEBUG_TIP   = "Prints extra lines to chat. Same as /pa debug on.",
+    PURGE_DISABLED  = "Set the retention period to more than 0 days first.",
+}
+
+-- Keybind display name, used by bindings.xml. Created before the keybinding UI
+-- is ever opened, which is what the game needs.
+ZO_CreateStringId("SI_BINDING_NAME_IRY_TOGGLE_BROWSER", "Open the player list")

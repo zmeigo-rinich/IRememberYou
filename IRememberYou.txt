@@ -1,0 +1,28 @@
+## Title: I remember you!
+## APIVersion: 101050 101051
+## Version: 0.3.0
+## AddOnVersion: 300
+## SavedVariables: IRememberYouSV
+## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, and adds a resizable browsable player list with per-character alliance details.
+## Author: I remember you! contributors
+## OptionalDependsOn: LibAddonMenu-2.0
+
+core/constants.lua
+lang/en.lua
+lang/ru.lua
+bindings.xml
+core/util.lua
+core/store.lua
+core/resolver.lua
+core/print.lua
+track/observer.lua
+track/rename.lua
+track/poller.lua
+ui/targetframe.lua
+ui/chat.lua
+ui/social.lua
+ui/browser.xml
+ui/browser.lua
+ui/settings.lua
+ui/commands.lua
+IRememberYou.lua

@@ -1,0 +1,289 @@
+<GuiXml>
+  <Controls>
+
+    <!-- One row of the list. Filled from ui/browser.lua. The row stretches with
+         the Rows container; the Seen label is anchored to its right edge. -->
+    <Button name="IRY_BrowserRow" virtual="true" mouseEnabled="true">
+      <Dimensions x="628" y="26" />
+      <OnClicked>
+        IRY.Browser:OnRowClicked(self)
+      </OnClicked>
+      <OnMouseEnter>
+        IRY.Browser:OnRowEnter(self)
+      </OnMouseEnter>
+      <OnMouseExit>
+        IRY.Browser:OnRowLeave(self)
+      </OnMouseExit>
+      <Controls>
+        <Backdrop name="$(parent)Highlight" inherits="ZO_ThinBackdrop" centerColor="7FBF7F" edgeColor="7FBF7F" alpha="0.10" hidden="true" />
+        <Label name="$(parent)Id" font="ZoFontGameSmall" color="8F8F8F" verticalAlignment="CENTER">
+          <Anchor point="TOPLEFT" offsetX="8" />
+          <Dimensions x="44" y="26" />
+        </Label>
+        <Label name="$(parent)Name" font="ZoFontGame" color="FFFFFF" verticalAlignment="CENTER" wrapMode="ELLIPSIS">
+          <Anchor point="TOPLEFT" offsetX="56" />
+          <Dimensions x="224" y="26" />
+        </Label>
+        <Label name="$(parent)Meta" font="ZoFontGameSmall" color="A8A8A8" verticalAlignment="CENTER" wrapMode="ELLIPSIS">
+          <Anchor point="TOPLEFT" offsetX="286" />
+          <Dimensions x="240" y="26" />
+        </Label>
+        <Label name="$(parent)Seen" font="ZoFontGameSmall" color="7F7F7F" verticalAlignment="CENTER">
+          <Anchor point="RIGHT" relativePoint="RIGHT" offsetX="-8" />
+        </Label>
+      </Controls>
+    </Button>
+
+    <!-- One line of the detail panel. Section headers reuse it with a wider
+         Name label; the divider is a blank line. -->
+    <Control name="IRY_DetailLine" virtual="true" mouseEnabled="false">
+      <Dimensions x="300" y="18" />
+      <Controls>
+        <Label name="$(parent)Name" font="ZoFontGameSmall" color="FFFFFF" verticalAlignment="CENTER" wrapMode="ELLIPSIS">
+          <Anchor point="TOPLEFT" />
+          <Dimensions x="150" y="18" />
+        </Label>
+        <Label name="$(parent)Meta" font="ZoFontGameSmall" color="8F8F8F" verticalAlignment="CENTER" wrapMode="ELLIPSIS">
+          <Anchor point="TOPLEFT" offsetX="154" />
+          <Dimensions x="146" y="18" />
+        </Label>
+      </Controls>
+    </Control>
+
+    <TopLevelControl name="IRY_Browser" hidden="true" movable="true" clampedToScreen="true" mouseEnabled="true" resizeHandleSize="16">
+      <Dimensions x="660" y="680" />
+      <Anchor point="CENTER" />
+
+      <OnMoveStop>
+        IRY.Browser:SavePosition()
+      </OnMoveStop>
+
+      <OnResizeStop>
+        IRY.Browser:OnResizeStop()
+      </OnResizeStop>
+
+      <OnMouseWheel>
+        IRY.Browser:TurnPage(-delta)
+      </OnMouseWheel>
+
+      <Controls>
+        <Backdrop name="$(parent)BG" inherits="ZO_DefaultBackdrop" />
+
+        <Label name="$(parent)Title" font="ZoFontGameBold" color="FFFFFF" text="I remember you!">
+          <Anchor point="TOPLEFT" offsetX="16" offsetY="8" />
+        </Label>
+
+        <Button name="$(parent)Close" inherits="ZO_CloseButton">
+          <Anchor point="TOPRIGHT" offsetX="-10" offsetY="8" />
+          <OnClicked>
+            IRY.Browser:Hide()
+          </OnClicked>
+        </Button>
+
+        <Backdrop name="$(parent)SearchBG" inherits="ZO_EditBackdrop">
+          <Dimensions x="380" y="28" />
+          <Anchor point="TOPLEFT" offsetX="16" offsetY="36" />
+          <Controls>
+            <EditBox name="$(parent)Edit" inherits="ZO_DefaultEditForBackdrop">
+              <OnTextChanged>
+                IRY.Browser:OnSearchChanged(self:GetText())
+              </OnTextChanged>
+            </EditBox>
+          </Controls>
+        </Backdrop>
+
+        <Button name="$(parent)TabPlayers" inherits="ZO_DefaultButton">
+          <Dimensions x="110" y="24" />
+          <Anchor point="TOPLEFT" offsetX="16" offsetY="72" />
+          <OnClicked>
+            IRY.Browser:SetTab("players")
+          </OnClicked>
+        </Button>
+
+        <Button name="$(parent)TabPending" inherits="ZO_DefaultButton">
+          <Dimensions x="150" y="24" />
+          <Anchor point="TOPLEFT" offsetX="132" offsetY="72" />
+          <OnClicked>
+            IRY.Browser:SetTab("pending")
+          </OnClicked>
+        </Button>
+
+        <Label name="$(parent)Count" font="ZoFontGameSmall" color="8F8F8F" verticalAlignment="CENTER">
+          <Anchor point="TOPLEFT" offsetX="300" offsetY="74" />
+          <Dimensions x="340" y="20" />
+        </Label>
+
+        <Label name="$(parent)HeadId" font="ZoFontGameSmall" color="6F6F6F" text="#">
+          <Anchor point="TOPLEFT" offsetX="16" offsetY="104" />
+          <Dimensions x="44" y="16" />
+        </Label>
+        <Label name="$(parent)HeadName" font="ZoFontGameSmall" color="6F6F6F">
+          <Anchor point="TOPLEFT" offsetX="64" offsetY="104" />
+          <Dimensions x="224" y="16" />
+        </Label>
+        <Label name="$(parent)HeadMeta" font="ZoFontGameSmall" color="6F6F6F">
+          <Anchor point="TOPLEFT" offsetX="294" offsetY="104" />
+          <Dimensions x="240" y="16" />
+        </Label>
+        <Label name="$(parent)HeadSeen" font="ZoFontGameSmall" color="6F6F6F">
+          <Anchor point="TOPRIGHT" offsetX="-32" offsetY="104" />
+        </Label>
+
+        <!-- The list grows with the window: top offset is fixed, the bottom
+             edge follows the footer. ui/browser.lua computes the row count
+             from GetHeight(). -->
+        <Control name="$(parent)Rows">
+          <Anchor point="TOPLEFT" offsetX="8" offsetY="124" />
+          <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" offsetX="-8" offsetY="-112" />
+        </Control>
+
+        <!-- Single reusable detail panel. It is a child of the main window, so
+             hiding the list hides it automatically. It shows every @account and
+             every character of the selected player. -->
+        <Control name="$(parent)DetailPanel" hidden="true" mouseEnabled="true">
+          <Anchor point="TOPLEFT" relativePoint="TOPRIGHT" offsetX="8" offsetY="0" />
+          <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" offsetX="328" offsetY="0" />
+          <OnMouseWheel>
+            IRY.Browser:ScrollDetail(-delta)
+          </OnMouseWheel>
+          <Controls>
+            <Backdrop name="IRY_BrowserDetailPanelBG" inherits="ZO_DefaultBackdrop" />
+
+            <Label name="IRY_BrowserDetailPanelTitle" font="ZoFontGameBold" color="FFFFFF" wrapMode="ELLIPSIS">
+              <Anchor point="TOPLEFT" offsetX="10" offsetY="10" />
+              <Anchor point="TOPRIGHT" offsetX="-40" offsetY="10" />
+              <Dimensions y="20" />
+            </Label>
+
+            <Button name="IRY_BrowserDetailPanelClose" inherits="ZO_CloseButton">
+              <Anchor point="TOPRIGHT" offsetX="-8" offsetY="8" />
+              <OnClicked>
+                IRY.Browser:CloseDetail()
+              </OnClicked>
+            </Button>
+
+            <Control name="IRY_BrowserDetailPanelLines">
+              <Anchor point="TOPLEFT" offsetX="10" offsetY="40" />
+              <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-28" />
+            </Control>
+
+            <Label name="IRY_BrowserDetailPanelHint" font="ZoFontGameSmall" color="7F7F7F" wrapMode="ELLIPSIS">
+              <Anchor point="BOTTOMLEFT" offsetX="10" offsetY="-8" />
+              <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-8" />
+              <Dimensions y="16" />
+            </Label>
+          </Controls>
+        </Control>
+
+        <!-- Footer: everything that must stay at the bottom while the window
+             grows. Offsets inside it are relative to its own top-left. -->
+        <Control name="$(parent)Footer">
+          <Anchor point="BOTTOMLEFT" relativePoint="BOTTOMLEFT" offsetX="8" offsetY="-8" />
+          <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" offsetX="-8" offsetY="-8" />
+          <Dimensions y="96" />
+          <Controls>
+            <Label name="IRY_BrowserDetail" font="ZoFontGameSmall" color="CFDCBD" wrapMode="ELLIPSIS">
+              <Anchor point="TOPLEFT" offsetX="8" offsetY="0" />
+              <Anchor point="TOPRIGHT" offsetX="-8" offsetY="0" />
+              <Dimensions y="20" />
+            </Label>
+
+            <Backdrop name="IRY_BrowserRenameBG" inherits="ZO_EditBackdrop">
+              <Dimensions x="180" y="28" />
+              <Anchor point="TOPLEFT" offsetX="8" offsetY="26" />
+              <Controls>
+                <EditBox name="IRY_BrowserRenameBGEdit" inherits="ZO_DefaultEditForBackdrop">
+                  <OnEnter>
+                    IRY.Browser:CommitRename()
+                    self:LoseFocus()
+                  </OnEnter>
+                  <OnFocusLost>
+                    IRY.Browser:OnRenameFocusLost()
+                  </OnFocusLost>
+                </EditBox>
+              </Controls>
+            </Backdrop>
+
+            <Button name="IRY_BrowserRename" inherits="ZO_DefaultButton">
+              <Dimensions x="140" y="24" />
+              <Anchor point="TOPLEFT" offsetX="196" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:CommitRename()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserReset" inherits="ZO_DefaultButton">
+              <Dimensions x="80" y="24" />
+              <Anchor point="TOPLEFT" offsetX="344" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:ResetName()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserMerge" inherits="ZO_DefaultButton">
+              <Dimensions x="110" y="24" />
+              <Anchor point="TOPLEFT" offsetX="432" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:MergeSelected()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserUndo" inherits="ZO_DefaultButton">
+              <Dimensions x="94" y="24" />
+              <Anchor point="TOPLEFT" offsetX="550" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:UndoLastMerge()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserYes" inherits="ZO_DefaultButton">
+              <Dimensions x="64" y="24" />
+              <Anchor point="TOPLEFT" offsetX="196" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:ConfirmSelected(true)
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserNo" inherits="ZO_DefaultButton">
+              <Dimensions x="64" y="24" />
+              <Anchor point="TOPLEFT" offsetX="268" offsetY="28" />
+              <OnClicked>
+                IRY.Browser:ConfirmSelected(false)
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserPrev" inherits="ZO_DefaultButton" text="&lt;">
+              <Dimensions x="40" y="24" />
+              <Anchor point="TOPLEFT" offsetX="8" offsetY="60" />
+              <OnClicked>
+                IRY.Browser:TurnPage(-1)
+              </OnClicked>
+            </Button>
+
+            <Label name="IRY_BrowserPageLabel" font="ZoFontGameSmall" color="8F8F8F" verticalAlignment="CENTER">
+              <Anchor point="TOPLEFT" offsetX="56" offsetY="64" />
+              <Dimensions x="200" y="18" />
+            </Label>
+
+            <Button name="IRY_BrowserPurge" inherits="ZO_DefaultButton">
+              <Dimensions x="100" y="24" />
+              <Anchor point="TOPLEFT" offsetX="272" offsetY="60" />
+              <OnClicked>
+                IRY.Browser:PurgeOld()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserNext" inherits="ZO_DefaultButton" text="&gt;">
+              <Dimensions x="40" y="24" />
+              <Anchor point="TOPRIGHT" offsetX="-8" offsetY="60" />
+              <OnClicked>
+                IRY.Browser:TurnPage(1)
+              </OnClicked>
+            </Button>
+          </Controls>
+        </Control>
+      </Controls>
+    </TopLevelControl>
+
+  </Controls>
+</GuiXml>
