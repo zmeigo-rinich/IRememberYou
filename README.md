@@ -1,5 +1,7 @@
 # I remember you!
 
+**English** · [Русский](README.ru.md)
+
 An Elder Scrolls Online addon that remembers **players**, not just names.
 
 In ESO a player can change their `@account` and every addon, friend list entry
