@@ -775,7 +775,7 @@ merge A/B → C/D → C/B; `wipe confirm` стирает базу и сбрас�
 должны с ней совпадать, иначе CI падает.
 
 1. Поднять `## Version:` и `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
-   `0.3.1` даёт `301`) в `IRememberYou.txt` и `IRY.version` в
+   `0.3.0` даёт `300`) в `IRememberYou.txt` и `IRY.version` в
    `core/constants.lua`.
 2. Добавить или обновить раздел `## [<version>]` в `CHANGELOG.md`.
 3. Закоммитить и запушить в `main`.

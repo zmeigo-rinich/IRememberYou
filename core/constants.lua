@@ -14,7 +14,7 @@ IRY = IRY or {}
 
 IRY.name      = ADDON_NAME
 IRY.title     = ADDON_TITLE
-IRY.version   = "0.3.1"
+IRY.version   = "0.3.0"
 IRY.author    = "I remember you! contributors"
 IRY.svName    = SV_NAME
 IRY.svVersion = SV_VERSION

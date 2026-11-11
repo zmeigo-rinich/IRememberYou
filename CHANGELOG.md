@@ -4,23 +4,12 @@ Notable changes to **I remember you!** are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-The version itself has a single source of truth: the git tag. `build.ps1`
-writes it into `IRememberYou.txt` and `core/constants.lua`, and the GitHub
-release body is extracted from the matching section below — so a release is
-described here once and nowhere else.
+The version lives in `IRememberYou.txt`; `IRY.version` in
+`core/constants.lua` and `## AddOnVersion:` must match it, and the release
+workflow publishes the zip when `main` is pushed. Add an entry here for every
+user-visible change.
 
 ## [Unreleased]
-
-## [0.3.1] - 2026-11-11
-
-No addon behaviour changed: this release exists to fix the release pipeline.
-
-### Fixed
-
-- The GitHub release is created by pushing to `main`: the workflow reads the
-  version from `IRememberYou.txt`, packages the addon and publishes the zip with
-  installation notes. Nothing is installed or compiled on the runner, so it no
-  longer depends on the runner's apt mirrors or on downloading Lua.
 
 ## [0.3.0] - 2026-11-11
 

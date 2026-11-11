@@ -749,7 +749,7 @@ and never writes anything; `IRY.version` in `core/constants.lua` and
 `## AddOnVersion:` must match it, and CI fails if they do not.
 
 1. Bump `## Version:` and `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
-   `0.3.1` becomes `301`) in `IRememberYou.txt`, and `IRY.version` in
+   `0.3.0` becomes `300`) in `IRememberYou.txt`, and `IRY.version` in
    `core/constants.lua`.
 2. Add or update the section `## [<version>]` in `CHANGELOG.md`.
 3. Commit and push to `main`.
