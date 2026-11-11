@@ -764,8 +764,14 @@ and never writes anything; `IRY.version` in `core/constants.lua` and
 7. Upload the same archive to ESOUI by hand — the site has no public upload API.
 
 The archive is built from the working tree with `.git`, `.github`,
-`.gitignore` and `.gitattributes` excluded, and contains
-`IRememberYou/IRememberYou.txt` at its root.
+`.gitignore`, `.gitattributes`, `DEVELOPMENT.md` and `DEVELOPMENT.ru.md`
+excluded, and contains `IRememberYou/IRememberYou.txt` at its root. The
+workflow fails if anything hidden or any `DEVELOPMENT*` file survives, so the
+release never ships developer docs by accident.
+
+To re-publish the same version (for example after fixing the archive contents),
+delete the release and the `v<version>` tag on GitHub, then push `main` again:
+the release is created anew from the current commit.
 
 Static checks are no longer part of the workflow, because CI installs nothing.
 Run them by hand when a change is risky: `luac -p` from

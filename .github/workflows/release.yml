@@ -76,10 +76,20 @@ jobs:
           rm -rf "$pkg"
           mkdir -p "$pkg"
           cp -a . "$pkg/IRememberYou"
+          # Ship only what the game and the player need: drop VCS metadata and
+          # the developer docs, which stay in the repository.
           rm -rf "$pkg/IRememberYou/.git" \
                  "$pkg/IRememberYou/.github" \
                  "$pkg/IRememberYou/.gitignore" \
-                 "$pkg/IRememberYou/.gitattributes"
+                 "$pkg/IRememberYou/.gitattributes" \
+                 "$pkg/IRememberYou/DEVELOPMENT.md" \
+                 "$pkg/IRememberYou/DEVELOPMENT.ru.md"
+          test -f "$pkg/IRememberYou/IRememberYou.txt"
+          if find "$pkg/IRememberYou" -mindepth 1 \( -name 'DEVELOPMENT*' -o -name '.*' \) -print -quit | grep -q .; then
+            echo "::error::The package still contains development files"
+            find "$pkg/IRememberYou" -mindepth 1 \( -name 'DEVELOPMENT*' -o -name '.*' \) -print
+            exit 1
+          fi
           (cd "$pkg" && zip -qr "$GITHUB_WORKSPACE/IRememberYou_v${version}.zip" IRememberYou)
           unzip -l "IRememberYou_v${version}.zip"
 
