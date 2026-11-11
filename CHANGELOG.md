@@ -17,12 +17,10 @@ No addon behaviour changed: this release exists to fix the release pipeline.
 
 ### Fixed
 
-- GitHub Actions builds the zip from the tag and publishes it with notes from
-  this file. The first attempt failed while installing Lua through `apt-get`;
-  the workflow now compiles Lua 5.1 from source, so the checks no longer depend
-  on the runner's apt mirrors.
-- `build.ps1` names the resolved `luac` in its output, which makes a failed
-  syntax check easier to diagnose from the CI log.
+- The GitHub release is created by pushing to `main`: the workflow reads the
+  version from `IRememberYou.txt`, packages the addon and publishes the zip with
+  installation notes. Nothing is installed or compiled on the runner, so it no
+  longer depends on the runner's apt mirrors or on downloading Lua.
 
 ## [0.3.0] - 2026-11-11
 

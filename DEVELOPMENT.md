@@ -744,46 +744,33 @@ so it cannot be checked statically).
 
 ## 16. Release checklist
 
-The version has a single source of truth: the git tag. `build.ps1` writes it
-into `core/constants.lua` and `IRememberYou.txt`; `.github/workflows/release.yml`
-re-runs the same script in `-VerifyOnly` mode and publishes the zip when a `v*`
-tag is pushed.
+The version lives in `IRememberYou.txt` (`## Version:`). The workflow reads it
+and never writes anything; `IRY.version` in `core/constants.lua` and
+`## AddOnVersion:` must match it, and CI fails if they do not.
 
-1. Describe the release under a new `## [<version>]` heading in `CHANGELOG.md`.
-   The GitHub release body is extracted from that section, so a tag without it
-   fails the workflow. Do not edit the version anywhere else by hand.
-2. Run `.\build.ps1 -Version <version>`. It writes `IRY.version`,
-   `## Version:` and `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
-   `0.3.0` becomes `300`), runs every static check below, and writes the zip
-   next to the addon folder (`..\IRememberYou-<version>.zip`; in this project
-   that is `Output\`).
-3. Commit the changelog entry and the version bump together, then create the
-   tag: `git tag v<version> && git push origin main --tags`.
-4. CI verifies that the tag matches the committed files, rebuilds the zip and
-   attaches it to a GitHub release named after the tag.
-5. Upload the same zip to ESOUI by hand — the site has no public upload API.
-6. Run the live-client checklist above (§15) against that zip before announcing
-   it.
+1. Bump `## Version:` and `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
+   `0.3.1` becomes `301`) in `IRememberYou.txt`, and `IRY.version` in
+   `core/constants.lua`.
+2. Add or update the section `## [<version>]` in `CHANGELOG.md`.
+3. Commit and push to `main`.
+4. The workflow packages the addon, creates the tag `v<version>` and publishes a
+   GitHub release with `IRememberYou_v<version>.zip` and bilingual installation
+   notes. A version that already has a release is skipped, so bump the version
+   to publish again.
+5. Pushing the tag yourself also works, but it must be exactly `v<version>`;
+   pushing `main` is the normal path.
+6. Run the live-client checklist above (§15) against the archive before
+   announcing the release.
+7. Upload the same archive to ESOUI by hand — the site has no public upload API.
 
-`build.ps1` flags: `-Version` (default: the exact tag on `HEAD`, else the
-manifest version), `-VerifyOnly` (never write; fail on any mismatch), `-NoZip`,
-`-OutputPath <dir>` (default: the addon folder's parent, `Output\` here),
-`-ReleaseNotesPath <file>`, `-LuacPath <exe>`, `-SkipLuaCheck`.
+The archive is built from the working tree with `.git`, `.github`,
+`.gitignore` and `.gitattributes` excluded, and contains
+`IRememberYou/IRememberYou.txt` at its root.
 
-Static checks, run locally and in CI:
-
-* `luac -p` on every `.lua` file (bundled `Input/lua-5.1.5_Win64_bin/luac5.1.exe`
-  locally, `lua5.1` from apt in CI; set `LUAC` to override);
-* every `.xml` parses as XML;
-* every `.lua`/`.xml`/`.txt`/`.md` is valid UTF-8 without BOM;
-* EN and RU define exactly the same `IRY.L` keys, `HELP` has the same line
-  count, and every `IRY.L.*` used in code exists;
-* every path listed in `IRememberYou.txt` exists;
-* the zip has `IRememberYou/IRememberYou.txt` at its root and contains none of
-  `.git`, `.github`, `.gitignore`, `.gitattributes` or `build.ps1`.
-
-`build.ps1` and `.github/` are excluded from the zip automatically, so the
-archive can be uploaded as is.
+Static checks are no longer part of the workflow, because CI installs nothing.
+Run them by hand when a change is risky: `luac -p` from
+`Input/lua-5.1.5_Win64_bin/`, `[xml]` parsing of the two XML files, and a diff
+of the `IRY.L` keys between `lang/en.lua` and `lang/ru.lua`.
 
 ---
 

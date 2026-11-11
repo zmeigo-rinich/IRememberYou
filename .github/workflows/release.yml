@@ -4,80 +4,104 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-  pull_request:
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  checks:
-    name: Static checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Lua 5.1
-        run: |
-          set -euo pipefail
-          curl -fsSL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$RUNNER_TEMP/lua-5.1.5.tar.gz"
-          tar -xzf "$RUNNER_TEMP/lua-5.1.5.tar.gz" -C "$RUNNER_TEMP"
-          make -C "$RUNNER_TEMP/lua-5.1.5" -j4 generic
-          mkdir -p "$RUNNER_TEMP/lua/bin"
-          cp "$RUNNER_TEMP/lua-5.1.5/src/lua" "$RUNNER_TEMP/lua-5.1.5/src/luac" "$RUNNER_TEMP/lua/bin/"
-          echo "$RUNNER_TEMP/lua/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/lua/bin/luac" -v
-
-      - name: Verify metadata and sources
-        shell: pwsh
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if ($env:REF_TYPE -eq 'tag') {
-            $version = $env:REF_NAME.TrimStart('v').Trim()
-            ./build.ps1 -Version $version -VerifyOnly -NoZip
-          }
-          else {
-            ./build.ps1 -VerifyOnly -NoZip
-          }
-
   release:
-    name: Publish GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: checks
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Build Lua 5.1
+      - name: Read version from manifest
+        id: version
         run: |
-          set -euo pipefail
-          curl -fsSL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$RUNNER_TEMP/lua-5.1.5.tar.gz"
-          tar -xzf "$RUNNER_TEMP/lua-5.1.5.tar.gz" -C "$RUNNER_TEMP"
-          make -C "$RUNNER_TEMP/lua-5.1.5" -j4 generic
-          mkdir -p "$RUNNER_TEMP/lua/bin"
-          cp "$RUNNER_TEMP/lua-5.1.5/src/lua" "$RUNNER_TEMP/lua-5.1.5/src/luac" "$RUNNER_TEMP/lua/bin/"
-          echo "$RUNNER_TEMP/lua/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/lua/bin/luac" -v
+          version=$(sed -n 's/^##[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' IRememberYou.txt | head -n 1)
+          if [ -z "$version" ]; then
+            echo "::error::No '## Version:' line found in IRememberYou.txt"
+            exit 1
+          fi
 
-      - name: Verify tag and build the zip
-        shell: pwsh
+          lua_version=$(sed -n 's/^IRY\.version[[:space:]]*=[[:space:]]*"\([^"]*\)".*$/\1/p' core/constants.lua | head -n 1)
+          if [ "$lua_version" != "$version" ]; then
+            echo "::error::core/constants.lua IRY.version ($lua_version) does not match IRememberYou.txt ($version)"
+            exit 1
+          fi
+
+          addon_version=$(sed -n 's/^##[[:space:]]*AddOnVersion:[[:space:]]*\([0-9][0-9]*\).*$/\1/p' IRememberYou.txt | head -n 1)
+          IFS=. read -r major minor patch <<< "$version"
+          expected=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
+          if [ "$addon_version" != "$expected" ]; then
+            echo "::error::IRememberYou.txt ## AddOnVersion: ($addon_version) should be $expected for version $version"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+
+      - name: Check tag matches version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "v${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match version v${{ steps.version.outputs.version }}"
+            exit 1
+          fi
+
+      - name: Check whether the release already exists
+        id: exists
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $version = $env:TAG_NAME.TrimStart('v').Trim()
-          if ($version -ne $env:TAG_NAME) { Write-Host "tag: $env:TAG_NAME -> version: $version" }
-          ./build.ps1 -Version $version -VerifyOnly `
-            -OutputPath "$env:RUNNER_TEMP/dist" `
-            -ReleaseNotesPath "$env:RUNNER_TEMP/release-notes.md"
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.version.outputs.tag }} already exists - nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: I remember you! ${{ github.ref_name }}
-          body_path: ${{ runner.temp }}/release-notes.md
-          files: ${{ runner.temp }}/dist/IRememberYou-*.zip
-          fail_on_unmatched_files: true
-          generate_release_notes: false
+      - name: Build release zip
+        if: steps.exists.outputs.exists == 'false'
+        run: |
+          set -e
+          version="${{ steps.version.outputs.version }}"
+          pkg="$RUNNER_TEMP/pkg"
+          rm -rf "$pkg"
+          mkdir -p "$pkg"
+          cp -a . "$pkg/IRememberYou"
+          rm -rf "$pkg/IRememberYou/.git" \
+                 "$pkg/IRememberYou/.github" \
+                 "$pkg/IRememberYou/.gitignore" \
+                 "$pkg/IRememberYou/.gitattributes"
+          (cd "$pkg" && zip -qr "$GITHUB_WORKSPACE/IRememberYou_v${version}.zip" IRememberYou)
+          unzip -l "IRememberYou_v${version}.zip"
+
+      - name: Create release
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          version="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
+          cat > notes.md <<EOF
+          ## IRememberYou ${version}
+
+          Аддон для The Elder Scrolls Online, который помнит игроков после смены @аккаунта и имени персонажа.
+
+          **Установка:** скачать архив \`IRememberYou_v${version}.zip\`, распаковать в папку AddOns, при желании поставить LibAddonMenu-2.0, выполнить \`/reloadui\`.
+
+          **Install:** download \`IRememberYou_v${version}.zip\`, unpack it into the AddOns folder, optionally install LibAddonMenu-2.0, run \`/reloadui\`.
+
+          Полная инструкция / full guide: [README.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.md) · [README.ru.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.ru.md) · [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)
+          EOF
+          gh release create "$tag" "IRememberYou_v${version}.zip" \
+            --title "IRememberYou ${version}" \
+            --notes-file notes.md
