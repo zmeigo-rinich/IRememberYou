@@ -1,7 +1,7 @@
 ## Title: I remember you!
 ## APIVersion: 101050 101051
-## Version: 0.3.0
-## AddOnVersion: 300
+## Version: 0.3.1
+## AddOnVersion: 301
 ## SavedVariables: IRememberYouSV
 ## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, and adds a resizable browsable player list with per-character alliance details.
 ## Author: I remember you! contributors

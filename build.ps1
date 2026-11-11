@@ -149,7 +149,7 @@ function Invoke-StaticChecks {
             if ($LASTEXITCODE -ne 0) { $failed += "$($file.Name): $output" }
         }
         if ($failed.Count -gt 0) { Fail ("luac -p failed:`n  " + ($failed -join "`n  ")) }
-        Info "luac -p: $($luaFiles.Count) Lua files OK"
+        Info "luac -p: $($luaFiles.Count) Lua files OK ($luac)"
     }
 
     foreach ($file in $xmlFiles) {
@@ -214,7 +214,10 @@ function New-AddonZip {
     param([string]$DestinationDirectory, [string]$Version)
 
     if (-not $DestinationDirectory) {
-        $DestinationDirectory = Join-Path (Split-Path -Parent $RepoRoot) 'Output'
+        # The zip belongs next to the addon folder, not inside it: in this
+        # project the addon lives in Output/IRememberYou, so the archive lands
+        # in Output/.
+        $DestinationDirectory = Split-Path -Parent $RepoRoot
     }
     if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
         New-Item -ItemType Directory -Path $DestinationDirectory -Force | Out-Null

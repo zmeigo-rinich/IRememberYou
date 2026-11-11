@@ -16,10 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Lua 5.1
+      - name: Build Lua 5.1
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends lua5.1
+          set -euo pipefail
+          curl -fsSL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$RUNNER_TEMP/lua-5.1.5.tar.gz"
+          tar -xzf "$RUNNER_TEMP/lua-5.1.5.tar.gz" -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/lua-5.1.5" -j4 generic
+          mkdir -p "$RUNNER_TEMP/lua/bin"
+          cp "$RUNNER_TEMP/lua-5.1.5/src/lua" "$RUNNER_TEMP/lua-5.1.5/src/luac" "$RUNNER_TEMP/lua/bin/"
+          echo "$RUNNER_TEMP/lua/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/lua/bin/luac" -v
 
       - name: Verify metadata and sources
         shell: pwsh
@@ -45,10 +51,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Lua 5.1
+      - name: Build Lua 5.1
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends lua5.1
+          set -euo pipefail
+          curl -fsSL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o "$RUNNER_TEMP/lua-5.1.5.tar.gz"
+          tar -xzf "$RUNNER_TEMP/lua-5.1.5.tar.gz" -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/lua-5.1.5" -j4 generic
+          mkdir -p "$RUNNER_TEMP/lua/bin"
+          cp "$RUNNER_TEMP/lua-5.1.5/src/lua" "$RUNNER_TEMP/lua-5.1.5/src/luac" "$RUNNER_TEMP/lua/bin/"
+          echo "$RUNNER_TEMP/lua/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/lua/bin/luac" -v
 
       - name: Verify tag and build the zip
         shell: pwsh

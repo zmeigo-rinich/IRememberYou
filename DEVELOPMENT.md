@@ -754,8 +754,9 @@ tag is pushed.
    fails the workflow. Do not edit the version anywhere else by hand.
 2. Run `.\build.ps1 -Version <version>`. It writes `IRY.version`,
    `## Version:` and `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
-   `0.3.0` becomes `300`), runs every static check below, and writes
-   `..\Output\IRememberYou-<version>.zip`.
+   `0.3.0` becomes `300`), runs every static check below, and writes the zip
+   next to the addon folder (`..\IRememberYou-<version>.zip`; in this project
+   that is `Output\`).
 3. Commit the changelog entry and the version bump together, then create the
    tag: `git tag v<version> && git push origin main --tags`.
 4. CI verifies that the tag matches the committed files, rebuilds the zip and
@@ -766,8 +767,8 @@ tag is pushed.
 
 `build.ps1` flags: `-Version` (default: the exact tag on `HEAD`, else the
 manifest version), `-VerifyOnly` (never write; fail on any mismatch), `-NoZip`,
-`-OutputPath <dir>` (default `..\Output`), `-ReleaseNotesPath <file>`,
-`-LuacPath <exe>`, `-SkipLuaCheck`.
+`-OutputPath <dir>` (default: the addon folder's parent, `Output\` here),
+`-ReleaseNotesPath <file>`, `-LuacPath <exe>`, `-SkipLuaCheck`.
 
 Static checks, run locally and in CI:
 

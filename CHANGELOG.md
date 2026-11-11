@@ -11,6 +11,19 @@ described here once and nowhere else.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-11
+
+No addon behaviour changed: this release exists to fix the release pipeline.
+
+### Fixed
+
+- GitHub Actions builds the zip from the tag and publishes it with notes from
+  this file. The first attempt failed while installing Lua through `apt-get`;
+  the workflow now compiles Lua 5.1 from source, so the checks no longer depend
+  on the runner's apt mirrors.
+- `build.ps1` names the resolved `luac` in its output, which makes a failed
+  syntax check easier to diagnose from the CI log.
+
 ## [0.3.0] - 2026-11-11
 
 First documented release. Versions 0.2.0 and 0.2.1 predate this changelog;

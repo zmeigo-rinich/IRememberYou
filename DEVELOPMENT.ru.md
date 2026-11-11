@@ -780,8 +780,9 @@ merge A/B → C/D → C/B; `wipe confirm` стирает базу и сбрас�
    workflow. Руками версию больше нигде не править.
 2. Запустить `.\build.ps1 -Version <version>`. Скрипт запишет `IRY.version`,
    `## Version:` и `## AddOnVersion:` (`major*10000 + minor*100 + patch`;
-   `0.3.0` даёт `300`), прогонит все статические проверки ниже и положит
-   `..\Output\IRememberYou-<version>.zip`.
+   `0.3.0` даёт `300`), прогонит все статические проверки ниже и положит архив
+   рядом с папкой аддона (`..\IRememberYou-<version>.zip`; в этом проекте —
+   в `Output\`).
 3. Закоммитить запись в changelog вместе с бампом версии, затем поставить тег:
    `git tag v<version> && git push origin main --tags`.
 4. CI проверит, что тег совпадает с закоммиченными файлами, пересоберёт архив
@@ -792,8 +793,9 @@ merge A/B → C/D → C/B; `wipe confirm` стирает базу и сбрас�
 
 Флаги `build.ps1`: `-Version` (по умолчанию — точный тег на `HEAD`, иначе
 версия из манифеста), `-VerifyOnly` (ничего не писать; падать при любом
-расхождении), `-NoZip`, `-OutputPath <dir>` (по умолчанию `..\Output`),
-`-ReleaseNotesPath <file>`, `-LuacPath <exe>`, `-SkipLuaCheck`.
+расхождении), `-NoZip`, `-OutputPath <dir>` (по умолчанию — родительская папка
+аддона, здесь `Output\`), `-ReleaseNotesPath <file>`, `-LuacPath <exe>`,
+`-SkipLuaCheck`.
 
 Статические проверки, локально и в CI:
 
