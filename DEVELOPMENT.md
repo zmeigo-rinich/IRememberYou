@@ -1044,7 +1044,11 @@ the release is created anew from the current commit.
 Static checks are no longer part of the workflow, because CI installs nothing.
 Run them by hand when a change is risky: `luac -p` from
 `Input/lua-5.1.5_Win64_bin/`, `[xml]` parsing of the two XML files, and a diff
-of the `IRY.L` keys between `lang/en.lua` and `lang/ru.lua`.
+of the `IRY.L` keys between `lang/en.lua` and `lang/ru.lua`. The last two are
+scripted: `lua5.1 DEVELOPMENT.langcheck.lua` checks key/HELP parity and every
+referenced `IRY.L` key, `lua5.1 DEVELOPMENT.pathcheck.lua` validates the icon
+manifest (both exit non-zero on failure). Both files match the `DEVELOPMENT*`
+exclusion, so they never enter the release archive.
 
 ---
 
