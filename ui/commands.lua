@@ -286,18 +286,40 @@ local function cmdNo(value)
     IRY:Print(string.format(IRY.L.PENDING_REJECTED, pendingId))
 end
 
-local function cmdPurge(daysText)
-    local settings = IRY.Store:GetSettings() or {}
-    local days
+-- The word is deliberately a separate token, so a stray Enter after the
+-- command cannot delete anything. Both spellings are accepted whatever the
+-- client language is, matching the existing `/pa debug wipe confirm` guard.
+local function isPurgeConfirmed(word)
+    if not word then
+        return false
+    end
 
-    if daysText and daysText ~= "" then
-        days = tonumber(daysText)
-        if not days then
+    word = word:lower()
+    return word == "confirm" or word == "подтверждаю" or word == "подтвердить"
+end
+
+local function cmdPurge(rest)
+    local settings = IRY.Store:GetSettings() or {}
+    local parts = {}
+
+    for token in tostring(rest or ""):gmatch("%S+") do
+        parts[#parts + 1] = token
+    end
+
+    local days = tonumber(settings.purgeAfterDays)
+    local confirmed = false
+
+    if parts[1] then
+        local number = tonumber(parts[1])
+        if number then
+            days = number
+            confirmed = isPurgeConfirmed(parts[2])
+        elseif isPurgeConfirmed(parts[1]) then
+            confirmed = true
+        else
             IRY:Print(IRY.L.PURGE_USAGE)
             return
         end
-    else
-        days = tonumber(settings.purgeAfterDays)
     end
 
     if not days or days <= 0 then
@@ -305,14 +327,7 @@ local function cmdPurge(daysText)
         return
     end
 
-    local removed = IRY.Store:Purge(days)
-    if removed > 0 then
-        IRY:Print(string.format(IRY.L.PURGED, removed, days))
-    else
-        IRY:Print(string.format(IRY.L.PURGE_NONE, days))
-    end
-
-    IRY:RefreshUI()
+    IRY:PurgeOldPlayers(days, confirmed)
 end
 
 local function sourceLabel(source)
@@ -390,6 +405,23 @@ local function cmdIcon(rest)
     end
 
     IRY:Print(string.format(IRY.L.ICON_SET, id, argument))
+end
+
+-- Diagnostic entry point for the reticle marker: `/pa marker` reports the
+-- settings, the control and the unit under the reticle; `/pa marker test` draws
+-- a placeholder regardless of any setting.
+local function cmdMarker(rest)
+    if not IRY.ReticleMarker then
+        IRY:Print(IRY.L.MARKER_MISSING)
+        return
+    end
+
+    if (rest or ""):lower() == "test" then
+        IRY.ReticleMarker:Test()
+        return
+    end
+
+    IRY:PrintLines(IRY.ReticleMarker:Describe())
 end
 
 local function cmdDebug(rest)
@@ -546,6 +578,9 @@ local function handle(args)
 
     elseif command == "icons" then
         cmdIcons(rest)
+
+    elseif command == "marker" then
+        cmdMarker(rest)
 
     elseif command == "browse" then
         IRY.Browser:Toggle()

@@ -35,6 +35,12 @@ end
 function IRY:RefreshUI()
     self:RefreshTargets()
 
+    -- The marker comes before the icon bridge: if applying 3D icons fails on a
+    -- client, the screen-space marker must still have been refreshed.
+    if IRY.ReticleMarker then
+        IRY.ReticleMarker:Refresh()
+    end
+
     if IRY.Icons then
         IRY.Icons:Apply()
     end
@@ -130,13 +136,21 @@ function IRY:NotifyPending(pendingId)
 end
 
 -- Applies the retention setting and reports the result in chat. Shared by the
--- settings panel button and the browser, so both behave identically.
-function IRY:PurgeOldPlayers(days)
+-- settings panel button, the browser and the slash command, so all behave
+-- identically. Without `confirmed` it only prints what would be removed and
+-- the exact command that performs the purge: one stray click must not erase
+-- hundreds of records.
+function IRY:PurgeOldPlayers(days, confirmed)
     local settings = IRY.Store and IRY.Store:GetSettings()
     days = tonumber(days) or (settings and tonumber(settings.purgeAfterDays)) or 0
 
     if days <= 0 then
         self:Print(IRY.L.PURGE_DISABLED)
+        return 0
+    end
+
+    if not confirmed then
+        self:Print(string.format(IRY.L.PURGE_NEEDS_CONFIRM, days, days))
         return 0
     end
 

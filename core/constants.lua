@@ -59,6 +59,16 @@ IRY.ICON = {
     max       = 40,
     default   = 28,
     socialMax = 28,
+    -- The screen-space marker has its own size range: it is a single picture
+    -- over the world, not a row icon, so it can be larger without moving any
+    -- layout.
+    markerMin = 16,
+    markerMax = 128,
+    markerDefault = 28,
+    -- Placeholder while the reticle marker is unlocked and there is no target
+    -- to take an icon from. Deliberately different from the blacklist icon, so
+    -- it reads as "move me", not as "this player is ignored".
+    markerPlaceholder = "IRememberYou/icons/base/green_arrow.dds",
     -- Marker for ignored players until the user picks another one. It must stay
     -- in the manifest: Icons:BlacklistPath() falls back to the first icon of the
     -- first pack when this one is missing.
@@ -128,6 +138,19 @@ IRY.SettingsDefaults = {
     showIcons            = true,
     iconSize2d           = IRY.ICON.default,
     blacklistIcons       = true,
+    -- An optional screen-space picture above the crosshair. Off by default so
+    -- the screen does not change for anyone who never asked for it. X/Y are
+    -- offsets from the screen centre, in UI pixels; the user drags the marker
+    -- and the result is stored here. Locked, it cannot be grabbed by the mouse.
+    reticleMarker        = false,
+    reticleMarkerX       = 0,
+    reticleMarkerY       = -60,
+    reticleMarkerSize    = IRY.ICON.markerDefault,
+    reticleMarkerLocked  = true,
+    -- Extra filters for the marker. Off by default: the toggle alone decides.
+    markerSkipDead       = false,
+    markerHostileOnly    = false,
+    markerPvPOnly        = false,
     -- blacklistIcon stays nil on purpose: nil means "use the shipped marker"
     -- (IRY.ICON.blacklistDefault), so the default follows the addon instead of
     -- being frozen into every SavedVariables file.

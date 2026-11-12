@@ -53,14 +53,15 @@ and strings first, the UI XML before the Lua that uses it, the bootstrap last.
 | 14 | `track/poller.lua` | timer that re-reads the reticle target |
 | 15 | `ui/targetframe.lua` | post-hooks on the reticle frame |
 | 16 | `ui/chat.lua` | player-link and kill-feed wrappers |
-| 17 | `ui/social.lua` | friends, guild and ignore list row decoration |
-| 18 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
-| 19 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
-| 20 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
-| 21 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
-| 22 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
-| 23 | `ui/commands.lua` | `/pa` and `/iry` |
-| 24 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
+| 17 | `ui/reticlemarker.lua` | optional screen-space marker above the crosshair |
+| 18 | `ui/social.lua` | friends, guild and ignore list row decoration |
+| 19 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
+| 20 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
+| 21 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
+| 22 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
+| 23 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
+| 24 | `ui/commands.lua` | `/pa` and `/iry` |
+| 25 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
 
 The manifest also declares `## OptionalDependsOn: LibAddonMenu-2.0`, so LAM is
 guaranteed to be loaded before `ui/settings.lua` runs when it is installed.
@@ -362,12 +363,24 @@ wrapped once. The wrapper:
 1. calls the original formatter;
 2. feeds both combatants to `Observer:Observe` (data source, regardless of
    whether the line is displayed);
-3. if `annotateKillFeed`, inserts the suffix after the colorized killer and
-   victim names in both `message` and `narration`.
+3. if `annotateKillFeed`, inserts the suffix after the killer and victim names in
+   both `message` and `narration`.
+
+Names are located in the **visible** text: `|cRRGGBB` and `|r` are stripped while
+keeping a byte map back into the original string, then the finished line is
+searched for the same name the formatter used (`ZO_GetPrimaryPlayerName`, with the
+other name and a bare `@`-less form as fallbacks). Searching the colored needle
+broke in battlegrounds (different colour API) and whenever another formatter had
+already rewritten the line. The victim is searched after the killer, so a
+self-kill annotates both occurrences; an existing suffix is detected and never
+inserted twice, which makes nested wrappers safe. Insertion is done right to left
+so the byte offsets stay valid.
 
 Re-installation is retried on `EVENT_PLAYER_ACTIVATED`, because the chat router
 may finish registering formatters after addons load, or another addon may
-replace the entry (`pChat` is the usual suspect).
+replace the entry (`pChat` is the usual suspect). `CHAT_ROUTER.RegisterMessageFormatter`
+is also wrapped: any later registration for this event, including pChat's, is
+wrapped again immediately instead of waiting for the next login.
 
 ### 7.4 Friends list, guild roster and ignore list (`ui/social.lua`)
 
@@ -418,8 +431,10 @@ fall back to a character lookup and the blacklist is asked about that same name.
   because the absorbed name must be shown as it was *before* the merge.
 * `IRY:NotifyPending` — one line with the id and both `/pa yes|no` hints.
 * `IRY:RefreshUI` — the only "redraw everything" entry point.
-* `IRY:PurgeOldPlayers(days)` — shared by the settings button, the browser and
-  `/pa purge`; reports the result and returns the removed count.
+* `IRY:PurgeOldPlayers(days, confirmed)` — shared by the settings button, the
+  browser and `/pa purge`. Without `confirmed` it only prints what would be
+  removed and the exact confirmation command; with it, performs the purge,
+  reports the result and returns the removed count.
 
 ---
 
@@ -511,6 +526,81 @@ then applies. Every OSI call is guarded and wrapped in `pcall`.
 * Without OSI the 2D surfaces are unaffected; `Icons:OsiStatus()` reports
   `ready`, `custom-off` (OSI's "show custom 3D icons" is disabled) or `missing`.
 
+### 7.7 Reticle marker (`ui/reticlemarker.lua`)
+
+The marker lives in `IRY.SettingsDefaults` next to the other icon settings:
+`reticleMarker` (default `false`), `reticleMarkerX` (`0`) and `reticleMarkerY`
+(`-60`, i.e. 60 px above the centre), `reticleMarkerSize` (default `28`, range
+`IRY.ICON.markerMin`–`markerMax`, 16–128), `reticleMarkerLocked` (`true`) and the
+three display filters `markerSkipDead`, `markerHostileOnly`, `markerPvPOnly`
+(all `false`, so the plain toggle alone decides).
+
+`ReticleMarker:Refresh` lazily creates one top-level window
+(`WINDOW_MANAGER:CreateTopLevelWindow`). Its main child is a `CT_TEXTURE` — the
+same construction the settings panel uses for its backgrounds — and the window
+is sized from `reticleMarkerSize`. A second child, a `CT_LABEL` with the
+localized `MARKER_HINT`, sits above the picture and is shown only while the
+marker is unlocked. While locked it anchors `CENTER` with
+`reticleMarkerX, reticleMarkerY` and hides the control when:
+
+* `showIcons == false` — the master switch covers this surface too;
+* `reticleMarker ~= true`;
+* `IsReticleHidden()` — menus and cinematics hide the game's own reticle;
+* `markerSkipDead` and `IsUnitDead("reticleover")`;
+* `markerHostileOnly` and `not IsUnitAttackable("reticleover")`;
+* `markerPvPOnly` and neither `IsPlayerInAvAWorld()` nor
+  `IsActiveWorldBattleground()` is true;
+* no path is resolved (no target, an unknown player, or no icon).
+
+**Moving it.** The settings checkbox `Move the marker` is checked while
+`reticleMarkerLocked == false`, so the checked state itself shows that move mode
+is active; checking it also switches `reticleMarker` on. In the
+unlocked state `Refresh` skips every display filter above (so the picture is
+visible in the menu and without a target), falls back to
+`IRY.ICON.markerPlaceholder` (green arrow) as a placeholder, shows the
+`MARKER_HINT` label above it, and enables the mouse on the control. Only the
+left button starts a drag: `OnMouseDown` sets `SetMovable(true)` and calls
+`StartMoving()`, while the right button is ignored. `OnMouseUp` and
+`OnMoveStop` both call an idempotent `finishDrag`, because ESO can finish the
+move without ever delivering `OnMouseUp`; it calls `StopMovingOrResizing()` (the
+documented name; `StopMovingOrResize` does not exist and would leave the
+picture glued to the cursor), turns `SetMovable` off and then `SavePosition()`.
+`SavePosition` converts the resulting `GetLeft`/`GetTop` back into offsets from
+the screen centre, clamps them so the whole picture stays on screen (4 px
+margin) and stores them in `reticleMarkerX`/`Y`; the position survives a reload
+because it is part of `settings`. A `control.dragging` flag makes `Refresh`
+return early, so the one-second update cannot re-anchor or resize the picture
+under the cursor mid-drag.
+
+Refresh is driven by `EVENT_RETICLE_TARGET_CHANGED`,
+`EVENT_RETICLE_HIDDEN_UPDATE`, `EVENT_UNIT_CHARACTER_NAME_CHANGED` for
+`reticleover`, `EVENT_PLAYER_ACTIVATED`,
+`IRY:RefreshUI()` (so an icon assignment or an ignore-list change repaints it) and
+a cheap one-second `RegisterForUpdate`, which also covers a target that was
+already under the reticle at load. Missing event constants are skipped through
+the same `register` guard as the icon bridge.
+
+Every refresh runs inside `pcall`: a failing call prints the error once and
+keeps it, so a broken marker is never silent. `/pa marker` prints the settings,
+the refresh counter, whether the control exists, its hidden state, size,
+position and resolved texture, the drag counters (`down`, `up`, `start`,
+`stop`), and what the game returns for `reticleover`
+(`DoesUnitExist`, `IsUnitPlayer`, `GetUnitName`, `IsReticleHidden`, icon path).
+`/pa marker test` toggles a diagnostic mode that draws a 128 px placeholder at
+the stored position regardless of the settings and filters, plus two test
+pictures in a separate diagnostic window: the same icon as inline `|t` markup
+120 px below the centre and a texture shipped with the game 260 px below it.
+Which of the three is visible tells apart a broken addon path, a broken label
+and a broken texture/container.
+
+The control is `DL_OVERLAY`/`DT_HIGH` and therefore always on top of the world.
+That is the honest limit of the approach: ESO does not expose non-group world
+positions, so the marker cannot stick to the target's head; it stays at a fixed
+screen offset and only *looks* like it is above the head when the target is at a
+matching distance. Dragging is the replacement for a distance formula: there is
+no `GetUnitDistance` (or any distance-to-unit function) in the official API, so
+the user positions the picture for the range they care about.
+
 ---
 
 ## 8. Browser window
@@ -581,7 +671,8 @@ state = {
   the newest `mergedAt`.
 * Rename commits on Enter, on the button, and on focus loss — but focus loss
   only commits when the text really differs, so clicking around stays quiet.
-* `Purge` calls `IRY:PurgeOldPlayers()` with the stored retention period.
+* `Purge` calls `IRY:PurgeOldPlayers()` with the stored retention period, so a
+  click only prints the confirmation prompt.
 * Mouse wheel pages (`TurnPage(-delta)`); Prev/Next buttons do the same.
 * Geometry is saved on `OnMoveStop` **and** `OnResizeStop` into
   `settings.browserLeft/browserTop/browserWidth/browserHeight` (deliberately not
@@ -669,9 +760,10 @@ plain `if/elseif` chain on the lower-cased first word.
   resolves through `Resolver:ForName`.
 * `resolveRawId` first tries an exact player id (needed for tombstones, which the
   index does not contain), then falls back to `resolveId`.
-* `/pa purge [days]`: a non-numeric argument prints the usage line; `0` (or no
-  argument with the setting at 0) prints "disabled"; only a positive number
-  deletes.
+* `/pa purge [days] [confirm]`: a non-numeric first argument prints the usage
+  line; `0` (or no argument with the setting at 0) prints "disabled"; without
+  the confirmation word it only prints the prompt. `confirm` and `подтверждаю`
+  are both accepted, so the typed guard works in either client language.
 * `/pa forget <id>`: deletes one entity. It refuses a tombstone and an entity
   with tombstones pointing at it, so undo chains stay valid; remove pending
   entries that reference the deleted entity.
@@ -688,7 +780,8 @@ A/B → C/D → C/B merge case; `ignore` dumps the cached Ignore list;
 Icon commands: `/pa icons [on|off]` toggles `showIcons` (no argument prints the
 state, UI size, blacklist marking and OSI status); `/pa icon <id> [path|clear]`
 shows, assigns or clears one player's icon through `Icons:ResolvePlayer`. A path
-must satisfy `IRY.IsIconPath`.
+must satisfy `IRY.IsIconPath`. `/pa marker` prints the reticle-marker diagnostic
+report from §7.7; `/pa marker test` toggles the three-picture test mode.
 
 ---
 
@@ -720,6 +813,14 @@ here is also filled in by `Store:EnsureSchema` for existing saves.
 | `pendingTtlDays` | `30` | number | — | pending expiry on login (code only) |
 | `showIcons` | `true` | bool | checkbox | master switch for every icon |
 | `iconSize2d` | `28` | number | slider 16–40, step 2 | inline icon size in the UI |
+| `reticleMarker` | `false` | bool | checkbox | show the screen-space reticle marker |
+| `reticleMarkerX` | `0` | number | drag | marker offset from the screen centre, X |
+| `reticleMarkerY` | `-60` | number | drag | marker offset from the screen centre, Y |
+| `reticleMarkerSize` | `28` | number | slider 16–128, step 2 | marker size, independent of row icons |
+| `reticleMarkerLocked` | `true` | bool | checkbox (inverted) | `false` = move mode, unchecked box |
+| `markerSkipDead` | `false` | bool | checkbox | hide the marker over a corpse |
+| `markerHostileOnly` | `false` | bool | checkbox | only for attackable units |
+| `markerPvPOnly` | `false` | bool | checkbox | only in AvA / battlegrounds |
 | `blacklistIcons` | `true` | bool | checkbox | mark ignored characters |
 | `blacklistIcon` | absent | string | button → picker | marker path; absent = shipped `rooster.dds` |
 | `purgeAfterDays` | `0` | number | slider 0–3650, step 30 | retention, 0 = never |
@@ -867,6 +968,21 @@ Before a release, in a live client:
     behind. A player under the reticle gets only the 2D icon: ESO does not expose
     the position of players outside the group, so no 3D icon is possible there.
     Without OSI the 2D surfaces still work and `/pa icons` reports "not loaded".
+23. Icons, reticle marker: turn the marker on and target a remembered player —
+    the icon appears near the crosshair and disappears when the target changes
+    or the reticle is hidden (menu, cinematic). Check "Move the marker": a hint
+    appears above the marker and it becomes draggable with the left
+    mouse button (a green arrow placeholder is shown when there is no target).
+    Drag it, lock it, reload the UI — the position is kept. The size slider
+    changes only the marker and stops at 128 px. Each filter works alone: dead targets,
+    hostile-only, PvP-only. `/pa icons off` hides it too; with the marker off,
+    the screen is untouched. Target an unknown player — nothing is drawn.
+24. Kill feed: in Cyrodiil and in a battleground, kill or be killed by a
+    remembered player — both names get ` (OldName)` in the feed and in the
+    narration line. A self-kill annotates both occurrences, not the first one
+    twice. With pChat installed the annotation must still appear; turning
+    "annotate chat" off must leave the feed annotated (the settings are
+    independent).
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's

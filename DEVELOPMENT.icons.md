@@ -150,7 +150,8 @@ function Blacklist:IsIgnored(name)    -- O(1)
 | `ui/browser.xml` | правка | блок иконки в панели деталей | 20 |
 | `ui/iconpicker.xml` | **новый** | окно выбора + виртуальная плитка | 70 |
 | `ui/iconpicker.lua` | **новый** | сетка, страницы, выбор | 140 |
-| `ui/settings.lua` | правка | секция «Icons» | 40 |
+| `ui/reticlemarker.lua` | **новый** | экранная метка над прицелом (необязательная) | 100 |
+| `ui/settings.lua` | правка | секция «Icons» + метка прицела | 60 |
 | `ui/commands.lua` | правка | `/pa icons`, `/pa icon` | 35 |
 | `core/print.lua` | правка | `RefreshUI` → `Icons:Apply()` | 6 |
 | `lang/en.lua`, `lang/ru.lua` | правка | ~20 ключей в каждый | 40 |
@@ -371,13 +372,23 @@ text = withTargetMarker(frame, unitTag, text)
 
 | контрол | ключ | заметка |
 |---|---|---|
-| checkbox «Show player icons» | `showIcons` | после — `Icons:OnToggle()` |
+| checkbox «Show player icons» | `showIcons` | после — `IRY:RefreshUI()`, гасит и метку прицела |
 | slider 16–40 | `iconSize2d` | подпись «UI only, world size is set in OSI» |
+| checkbox «Marker above the reticle» | `reticleMarker` | по умолчанию выключена; сама метка живёт в `ui/reticlemarker.lua` |
+| slider 16–128, шаг 2 | `reticleMarkerSize` | собственный размер метки, не связан с иконками списков |
+| checkbox «Move the marker» | `reticleMarkerLocked == false` | галочка = режим перемещения; установка разблокирует и включает метку, снятие закрепляет позицию и пишет строку в чат |
+| checkbox «Hide on dead targets» | `markerSkipDead` | |
+| checkbox «Only on hostile targets» | `markerHostileOnly` | `IsUnitAttackable("reticleover")` |
+| checkbox «Only in PvP areas» | `markerPvPOnly` | `IsPlayerInAvAWorld()` или `IsActiveWorldBattleground()` |
 | checkbox «Mark ignored players» | `blacklistIcons` | |
 | button «Choose blacklist icon» | — | открывает пикер в режиме `blacklist`; по умолчанию `IRY.ICON.blacklistDefault` (`rooster.dds`) |
 | description | — | статус OSI: найден/нет, `customuse` вкл/выкл, `fluse/gruse` вкл/выкл |
 
 Описание — единственное место, где игрок узнает, почему над головами пусто. Без него фича выглядит сломанной.
+
+Метку прицела рисует `ui/reticlemarker.lua`: top-level окно, внутри — `CT_TEXTURE` (как фоны панели настроек) и `CT_LABEL` с подсказкой `MARKER_HINT`, видимой только в режиме перемещения. Позиция — `reticleMarkerX, reticleMarkerY` от центра экрана, путь из `Icons:ForUnit("reticleover")`, размер из `reticleMarkerSize`. Она скрыта при `showIcons == false`, `reticleMarker ~= true`, `IsReticleHidden()`, включённых фильтрах и когда пути нет; обновляется событиями прицела, `EVENT_UNIT_CHARACTER_NAME_CHANGED` для `reticleover`, `IRY:RefreshUI()` и раз в секунду.
+
+Позиция задаётся перетаскиванием: кнопка снимает `reticleMarkerLocked`, метка включает мышь, `StartMoving()`/`StopMovingOrResizing()` двигают контрол, а `SavePosition()` переводит результат в смещения от центра, зажимает по границам экрана и сохраняет в SavedVariables. Начинает перетаскивание только левая кнопка; `OnMouseUp` и `OnMoveStop` вызывают один идемпотентный `finishDrag`, поэтому позиция сохраняется, даже если ESO завершила перемещение без `OnMouseUp`. Пока метка разблокирована, фильтры и `IsReticleHidden()` игнорируются, а без цели рисуется заглушка `IRY.ICON.markerPlaceholder` (`green_arrow.dds`) — иначе её негде было бы взять. Это экранная накладка, а не 3D: она не следует за дистанцией, и функции расстояния до юнита в API нет, поэтому позицию подбирает сам игрок.
 
 ### 5.7 `ui/commands.lua`
 
@@ -386,6 +397,9 @@ text = withTargetMarker(frame, unitTag, text)
 /pa icon <id>             показать текущую иконку и её источник (manual/blacklist/none)
 /pa icon <id> <path>      назначить вручную (для отладки)
 /pa icon <id> clear       снять
+/pa marker                отчёт о метке прицела (настройки, контрол, цель)
+/pa marker test           три тестовые картинки для диагностики
+/pa purge [days] [confirm]  очистка только со словом подтверждения
 /pa debug ignore          вывести кеш Ignore list
 ```
 
@@ -394,6 +408,7 @@ text = withTargetMarker(frame, unitTag, text)
 ```lua
 function IRY:RefreshUI()
     self:RefreshTargets()
+    if IRY.ReticleMarker then IRY.ReticleMarker:Refresh() end
     if IRY.Icons then IRY.Icons:Apply() end
     if IRY.Browser then IRY.Browser:RefreshIfShown() end
 end

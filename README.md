@@ -27,6 +27,11 @@ Everything it prints is local to your client.
   above group members. Entries on the game's ignore list
   can get a marker icon automatically (a rooster by default); a manually assigned
   icon always wins.
+* **Marker above the reticle** — an optional screen-space icon near the crosshair,
+  so the target's icon is visible without looking at the target frame. Off by
+  default; drag it with the left mouse button wherever it suits you and lock it
+  in place. It has its own size (up to 128 px) and can be limited to hostile
+  targets, living ones or PvP areas.
 * **Chat** — player links get a suffix: `@NewName (OldName)`. The link itself is
   untouched, clicking it still works.
 * **Friends and guild roster** — the remembered name is appended to the account
@@ -104,9 +109,10 @@ All commands start with `/pa` (alias `/iry`).
 | `/pa undo <id>` | undo a merge (id of the absorbed entity) |
 | `/pa pending` | links waiting for confirmation |
 | `/pa yes [n]` / `/pa no [n]` | confirm / reject a pending link |
-| `/pa purge [days]` | forget old players without custom names |
+| `/pa purge [days] [confirm]` | preview forgetting old players; add `confirm` to delete |
 | `/pa icons [on\|off]` | show or hide every player icon |
 | `/pa icon <id> [path\|clear]` | show, set or clear one player's icon |
+| `/pa marker [test]` | report the reticle marker, or draw a test picture |
 | `/pa debug on\|off` | debug output in chat |
 
 IDs are shown as `#12`; `12`, `#12`, `@Account` and a character name all work
@@ -142,10 +148,13 @@ a record. You can change that with “Accept probable links without asking”.
   (default 1000 ms).
 * **Linking** — how loudly to report ID changes, whether probable links are
   accepted automatically, whether conflicts are merged automatically.
-* **Player icons** — the master switch, the UI icon size, the ignore-list marker
-  and its icon. The 3D part is drawn by OdySupportIcons, if it is installed.
+* **Player icons** — the master switch, the UI icon size, the optional marker
+  above the reticle (its own size, drag-and-lock placement, dead/hostile/PvP
+  filters), the ignore-list marker and its icon. The 3D part is drawn by
+  OdySupportIcons, if it is installed.
 * **Maintenance** — retention period (`0` = never forget), a “forget old players
-  now” button, and debug output.
+  now” button (it only previews until you confirm with a typed word in chat),
+  and debug output.
 
 Defaults keep all display features on, accept nothing silently, and never
 delete anything by itself.
@@ -171,6 +180,14 @@ delete anything by itself.
 * 3D icons need **OdySupportIcons**; without it every 2D surface still works.
   The icon library ships with the addon: 75 icons in `icons/base`, listed in
   `core/iconpacks.lua` and chosen in the detail panel or with `/pa icon`.
+* The marker above the reticle is a screen-space overlay, not a 3D icon: it does
+  not follow the distance to the target. A close target appears as a picture at
+  chest height, a distant one as a picture above the head. Drag it to the spot
+  that matches the range you care about; ESO has no distance-to-unit function to
+  compute that automatically.
+* System messages about a player entering or leaving the area are built by the
+  game without player links, so they keep the original `@account` without the
+  remembered-name suffix. The PvP kill feed is annotated.
 
 ---
 
@@ -186,6 +203,14 @@ delete anything by itself.
   row and use **Reset**, or `/pa undo` the merge the addon made.
 * **You are in the list yourself** — from 0.2.1 on the addon ignores you. An old
   row is not deleted automatically: remove it with `/pa forget <id>`.
+* **The reticle marker floats beside the head** — it is a fixed screen picture, not
+  a 3D icon. Check “Move the marker”, drag it to where you expect it at
+  your usual fighting distance, then clear the checkbox.
+* **The marker is gone while unlocked** — check the icon master switch; the drag
+  mode ignores the display filters and the hidden reticle but not `showIcons`.
+* **Kill feed names are not annotated** — check “Annotate PvP kill messages” in
+  the Chat section and that the player is already remembered. System enter/leave
+  messages are never annotated: the game gives them no player link.
 
 ---
 
@@ -197,6 +222,13 @@ delete anything by itself.
 * icons are assigned manually from the detail panel or `/pa icon`, and the
   whole set can be switched off with `/pa icons off` or the settings;
 * entries on the game's ignore list can be marked with a dedicated icon;
+* an optional marker above the reticle, disabled by the same master switch: its
+  own size, drag-and-lock placement, and filters for dead, hostile and PvP-only
+  targets;
+* the PvP kill feed annotates both names even when a chat addon re-registers the
+  formatter or the line is coloured by the battleground team;
+* forgetting old players needs a typed confirmation (`/pa purge <days> confirm`);
+  the settings and browser buttons only preview what would be deleted;
 * 3D icons above group members through **OdySupportIcons**, including its own
   settings and saved icons being preserved. Players outside the group get their
   icon in the UI only: ESO does not expose their world position, so no addon can

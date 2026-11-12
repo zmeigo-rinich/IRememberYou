@@ -43,13 +43,23 @@ local function refresh()
     IRY:RefreshUI()
 end
 
+-- The marker controls (size, filters) only make sense while the marker and the
+-- icon master switch are on. The move-mode checkbox stays enabled on purpose,
+-- because checking it switches the marker on by itself.
+local function markerDisabled()
+    local settings = current()
+    return not settings
+        or settings.showIcons == false
+        or settings.reticleMarker ~= true
+end
+
 local function applyPoller()
     if IRY.Poller then
         IRY.Poller:Apply()
     end
 end
 
-local function checkbox(name, tooltip, key, after)
+local function checkbox(name, tooltip, key, after, disabled)
     return {
         type    = "checkbox",
         name    = name,
@@ -57,6 +67,7 @@ local function checkbox(name, tooltip, key, after)
         getFunc = getter(key),
         setFunc = setter(key, after),
         default = IRY.SettingsDefaults[key],
+        disabled = disabled,
     }
 end
 
@@ -159,6 +170,73 @@ local function buildOptions()
                 return settings and settings.showIcons == false
             end,
         },
+        checkbox(IRY.L.OPT_RETICLE_MARKER, IRY.L.OPT_RETICLE_MARKER_TIP,
+            "reticleMarker", refresh, function()
+                local settings = current()
+                return settings and settings.showIcons == false
+            end),
+        {
+            type     = "slider",
+            name     = IRY.L.OPT_RETICLE_MARKER_SIZE,
+            tooltip  = IRY.L.OPT_RETICLE_MARKER_SIZE_TIP,
+            min      = IRY.ICON.markerMin,
+            max      = IRY.ICON.markerMax,
+            step     = 2,
+            decimals = 0,
+            getFunc  = getter("reticleMarkerSize"),
+            setFunc  = setter("reticleMarkerSize", refresh),
+            default  = IRY.SettingsDefaults.reticleMarkerSize,
+            disabled = markerDisabled,
+        },
+        {
+            -- A checked box is the "pressed" state of move mode. It reads
+            -- better than a button that looks identical in both states.
+            type    = "checkbox",
+            name    = IRY.L.OPT_RETICLE_MARKER_MOVE,
+            tooltip = IRY.L.OPT_RETICLE_MARKER_MOVE_TIP,
+            getFunc = function()
+                local settings = current()
+                return settings ~= nil and settings.reticleMarkerLocked == false
+            end,
+            setFunc = function(value)
+                local settings = current()
+                if not settings then
+                    return
+                end
+
+                local unlocked = value == true
+                if unlocked == (settings.reticleMarkerLocked == false) then
+                    return
+                end
+
+                if unlocked then
+                    -- Unlocking without a visible marker would be confusing, so
+                    -- the marker is switched on together with move mode.
+                    settings.reticleMarker = true
+                    settings.reticleMarkerLocked = false
+                    IRY:Print(IRY.L.MARKER_UNLOCKED)
+                else
+                    if IRY.ReticleMarker then
+                        IRY.ReticleMarker:FinishDrag()
+                    end
+                    settings.reticleMarkerLocked = true
+                    IRY:Print(IRY.L.MARKER_LOCKED)
+                end
+
+                IRY:RefreshUI()
+            end,
+            default = false,
+            disabled = function()
+                local settings = current()
+                return settings and settings.showIcons == false
+            end,
+        },
+        checkbox(IRY.L.OPT_MARKER_SKIP_DEAD, IRY.L.OPT_MARKER_SKIP_DEAD_TIP,
+            "markerSkipDead", refresh, markerDisabled),
+        checkbox(IRY.L.OPT_MARKER_HOSTILE_ONLY, IRY.L.OPT_MARKER_HOSTILE_ONLY_TIP,
+            "markerHostileOnly", refresh, markerDisabled),
+        checkbox(IRY.L.OPT_MARKER_PVP_ONLY, IRY.L.OPT_MARKER_PVP_ONLY_TIP,
+            "markerPvPOnly", refresh, markerDisabled),
         checkbox(IRY.L.OPT_BLACKLIST_ICONS, IRY.L.OPT_BLACKLIST_ICONS_TIP, "blacklistIcons", refresh),
         {
             type    = "button",

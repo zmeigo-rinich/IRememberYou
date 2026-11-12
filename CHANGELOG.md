@@ -31,8 +31,31 @@ user-visible change.
 - 3D icons through **OdySupportIcons**: group members get the icon above their
   heads. Icons assigned in OSI are snapshotted and restored, and OSI's
   SavedVariables are never touched.
-- An "Icons" settings section: master switch, UI icon size, ignore-list marking,
-  the blacklist icon picker and a short note about the 3D dependency.
+- An optional marker near the reticle: the target's icon is drawn as a
+  screen-space texture, off by default and disabled with the icon master switch.
+  It has its own size (up to 128 px), can be dragged with the left mouse button
+  anywhere on screen and locked in place (also in the menu, using a green arrow
+  placeholder when there is no target), and can be limited to living targets,
+  hostile targets or PvP areas.
+- An "Icons" settings section: master switch, UI icon size, reticle marker with
+  its size, placement checkbox and filters, ignore-list marking, the blacklist
+  icon picker and a short note about the 3D dependency.
+
+### Changed
+
+- Forgetting old players needs a typed confirmation now. The settings button, the
+  browser and `/pa purge` without the word only print what would be removed and
+  the exact command; `/pa purge [days] confirm` (or `подтверждаю`) performs it.
+
+### Fixed
+
+- PvP kill feed annotation now finds the names by their visible text instead of
+  the colorized string the game builds. The old lookup missed the line whenever
+  the colour differed (battleground teams) and could be lost entirely when a chat
+  addon re-registered the kill feed formatter after this one. Self-kills annotate
+  both occurrences, and re-processing an already annotated line is a no-op.
+- Turning chat annotations off no longer turns the kill feed annotation off with
+  them: the two settings are independent again.
 
 ### Notes
 
@@ -40,7 +63,12 @@ user-visible change.
   world position — `GetUnitRawWorldPosition("reticleover")` answers `0, 0, 0` for
   every unit that is not grouped and not a pet — so nothing can be anchored above
   them. The reticle target keeps its icon in the target frame, which is drawn in
-  the UI layer and works for every player.
+  the UI layer and works for every player. The opt-in marker near the reticle is
+  a screen overlay and has the same limitation by design: it does not follow the
+  distance to the target. ESO also has no distance-to-unit function, so the
+  position is chosen by dragging, not computed.
+- System messages about a player entering or leaving the area carry no player
+  link, so they are not annotated; the kill feed is.
 
 ## [0.3.0] - 2026-11-11
 
