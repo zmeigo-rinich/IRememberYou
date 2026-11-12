@@ -489,12 +489,19 @@ then applies. Every OSI call is guarded and wrapped in `pcall`.
   SavedVariables; `UpdateCache(raw, saved)` immediately puts the old value back.
   Removing restores the previous special (or cache) and then the cache.
 * The reticle target cannot use `special` (group only), so it is one
-  `OSI.CreatePositionIcon` whose callback reads
-  `GetUnitRawWorldPosition("reticleover")` **inside OSI's own update loop** and
-  updates `icon.x/y/z`. Texture/size/offset live in `icon.data`; a changed
-  texture is written there and pushed to the control with `UpdateIconData`.
-  `DiscardPositionIcon` is called when the target stops being a player or our
-  icon disappears, because otherwise the slot stays visible.
+  `OSI.CreatePositionIcon` whose callback reads the target position **inside
+  OSI's own update loop** and updates `icon.x/y/z`. Texture/size/offset live in
+  `icon.data`; a changed texture is written there and pushed to the control with
+  `UpdateIconData`. `DiscardPositionIcon` is called when the target stops being a
+  player or our icon disappears, because otherwise the slot stays visible.
+  `GetUnitRawWorldPosition("reticleover")` is the primary source;
+  `GetUnitWorldPosition` is tried second, and `0, 0, 0` counts as "no position"
+  rather than a real spot in Tamriel. The event only *starts* the work: the unit
+  behind `EVENT_RETICLE_TARGET_CHANGED` can still be unresolvable for a frame, so
+  a deferred re-read follows, plus a one-second refresh that also picks up a size
+  or offset change in OSI's options. `/pa debug reticle` prints the decision
+  chain: OSI options, unit state, resolved path, both position sources, the
+  control's alpha/scale and the last `CreatePositionIcon` error.
 * `Icons:Apply` is idempotent: it only calls OSI when the path changed or OSI's
   special no longer holds our texture. It also unpushes keys that are no longer
   present in the group, so a member leaving or renaming cannot leave an icon

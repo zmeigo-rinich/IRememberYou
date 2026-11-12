@@ -32,6 +32,7 @@ if ok and language == "ru" then
             "  /pa debug conflict       смоделировать случай A/B -> C/D -> C/B",
             "  /pa debug dump <id>      вывести сущность целиком",
             "  /pa debug ignore         вывести кеш списка игнорирования",
+            "  /pa debug reticle        вывести состояние 3D-иконки цели",
             "  /pa debug wipe confirm   стереть всю базу",
         },
 

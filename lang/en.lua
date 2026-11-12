@@ -32,6 +32,7 @@ IRY.L = {
         "  /pa debug conflict       simulate the A/B  ->  C/D  ->  C/B case",
         "  /pa debug dump <id>      dump the raw entity",
         "  /pa debug ignore         dump the cached ignore list",
+        "  /pa debug reticle        dump the 3D reticle icon state",
         "  /pa debug wipe confirm   erase the whole database",
     },
 

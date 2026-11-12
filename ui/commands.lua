@@ -463,6 +463,11 @@ local function cmdDebug(rest)
         return
     end
 
+    if action == "reticle" then
+        IRY:PrintLines(IRY.Icons:ReticleDebug())
+        return
+    end
+
     if action == "wipe" then
         if parts[2] ~= "confirm" then
             IRY:Print(IRY.L.WIPE_NEEDS_CONFIRM)

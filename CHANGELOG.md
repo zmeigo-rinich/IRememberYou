@@ -34,6 +34,14 @@ user-visible change.
 - An "Icons" settings section: master switch, UI icon size, ignore-list marking,
   the blacklist icon picker and a short note about the 3D dependency.
 
+### Fixed
+
+- The 3D icon over the reticle target is created after the target settles and
+  refreshed once per second, so a target that was already under the reticle when
+  the addon loaded, or one the client had not resolved yet on the event, still
+  gets its icon. The position falls back to `GetUnitWorldPosition`, and
+  `/pa debug reticle` prints the whole decision chain.
+
 ## [0.3.0] - 2026-11-11
 
 First documented release. Versions 0.2.0 and 0.2.1 predate this changelog;
