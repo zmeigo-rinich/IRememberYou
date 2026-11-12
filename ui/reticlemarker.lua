@@ -80,6 +80,13 @@ local function shouldDisplay(s, path)
     if type(IsReticleHidden) == "function" and IsReticleHidden() then
         return false
     end
+    -- A group member already gets the same picture as a 3D icon above their
+    -- head through OSI. The screen marker exists for players whose world
+    -- position ESO withholds, so drawing it here would show the icon twice.
+    if IRY.Icons and type(IRY.Icons.HasGroupIcon) == "function"
+        and IRY.Icons:HasGroupIcon("reticleover") then
+        return false
+    end
     if s.markerSkipDead and type(IsUnitDead) == "function" and IsUnitDead("reticleover") then
         return false
     end
@@ -509,10 +516,21 @@ function Marker:Describe()
         hidden = IsReticleHidden() and true or false
     end
 
-    add(string.format("reticleover: exists=%s player=%s name=%s reticleHidden=%s icon=%s",
+    local grouped = nil
+    if type(IsUnitGrouped) == "function" then
+        grouped = IsUnitGrouped("reticleover") and true or false
+    end
+
+    local has3d = nil
+    if IRY.Icons and type(IRY.Icons.HasGroupIcon) == "function" then
+        has3d = IRY.Icons:HasGroupIcon("reticleover") and true or false
+    end
+
+    add(string.format("reticleover: exists=%s player=%s name=%s grouped=%s has3d=%s reticleHidden=%s icon=%s",
         tostring(exists),
         tostring(exists and IsUnitPlayer("reticleover")),
         tostring(exists and GetUnitName("reticleover")),
+        tostring(grouped), tostring(has3d),
         tostring(hidden), tostring(path)))
 
     if Marker.lastError then

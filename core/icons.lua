@@ -387,6 +387,19 @@ function Icons:OsiStatus()
     return "ready"
 end
 
+-- True when our icon for this unit is already pushed into OSI and its custom
+-- 3D layer is enabled. The reticle marker asks this so a group member does not
+-- get the same picture twice: once above the head and once near the crosshair.
+function Icons:HasGroupIcon(unitTag)
+    if self:OsiStatus() ~= "ready" then
+        return false
+    end
+
+    local displayName = GetUnitDisplayName and GetUnitDisplayName(unitTag)
+    local key = displayName and accountKey(displayName)
+    return key ~= nil and pushed[key] ~= nil
+end
+
 local function scheduleApply()
     zo_callLater(function()
         if IRY.Icons then

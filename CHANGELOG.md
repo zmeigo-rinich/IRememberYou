@@ -49,6 +49,9 @@ user-visible change.
 
 ### Fixed
 
+- The reticle marker no longer draws a second copy of the icon on a group
+  member: while OSI paints the same icon above the player's head in 3D, the
+  screen marker stays hidden.
 - PvP kill feed annotation now finds the names by their visible text instead of
   the colorized string the game builds. The old lookup missed the line whenever
   the colour differed (battleground teams) and could be lost entirely when a chat

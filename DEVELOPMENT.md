@@ -546,6 +546,9 @@ marker is unlocked. While locked it anchors `CENTER` with
 * `showIcons == false` — the master switch covers this surface too;
 * `reticleMarker ~= true`;
 * `IsReticleHidden()` — menus and cinematics hide the game's own reticle;
+* the target is a group member whose icon is already pushed into OSI as a 3D
+  picture (`Icons:HasGroupIcon("reticleover")`), so the marker does not draw a
+  second copy of it;
 * `markerSkipDead` and `IsUnitDead("reticleover")`;
 * `markerHostileOnly` and `not IsUnitAttackable("reticleover")`;
 * `markerPvPOnly` and neither `IsPlayerInAvAWorld()` nor
@@ -585,7 +588,8 @@ keeps it, so a broken marker is never silent. `/pa marker` prints the settings,
 the refresh counter, whether the control exists, its hidden state, size,
 position and resolved texture, the drag counters (`down`, `up`, `start`,
 `stop`), and what the game returns for `reticleover`
-(`DoesUnitExist`, `IsUnitPlayer`, `GetUnitName`, `IsReticleHidden`, icon path).
+(`DoesUnitExist`, `IsUnitPlayer`, `GetUnitName`, `IsUnitGrouped`,
+`Icons:HasGroupIcon`, `IsReticleHidden`, icon path).
 `/pa marker test` toggles a diagnostic mode that draws a 128 px placeholder at
 the stored position regardless of the settings and filters, plus two test
 pictures in a separate diagnostic window: the same icon as inline `|t` markup
@@ -975,8 +979,10 @@ Before a release, in a live client:
     mouse button (a green arrow placeholder is shown when there is no target).
     Drag it, lock it, reload the UI — the position is kept. The size slider
     changes only the marker and stops at 128 px. Each filter works alone: dead targets,
-    hostile-only, PvP-only. `/pa icons off` hides it too; with the marker off,
-    the screen is untouched. Target an unknown player — nothing is drawn.
+    hostile-only, PvP-only. Invite a remembered player to the group: OSI draws the
+    icon in 3D and the screen marker must not add a second copy. `/pa icons off`
+    hides it too; with the marker off, the screen is untouched. Target an unknown
+    player — nothing is drawn.
 24. Kill feed: in Cyrodiil and in a battleground, kill or be killed by a
     remembered player — both names get ` (OldName)` in the feed and in the
     narration line. A self-kill annotates both occurrences, not the first one

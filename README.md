@@ -224,7 +224,8 @@ delete anything by itself.
 * entries on the game's ignore list can be marked with a dedicated icon;
 * an optional marker above the reticle, disabled by the same master switch: its
   own size, drag-and-lock placement, and filters for dead, hostile and PvP-only
-  targets;
+  targets; group members keep only their 3D OSI icon, without a second screen
+  copy;
 * the PvP kill feed annotates both names even when a chat addon re-registers the
   formatter or the line is coloured by the battleground team;
 * forgetting old players needs a typed confirmation (`/pa purge <days> confirm`);
