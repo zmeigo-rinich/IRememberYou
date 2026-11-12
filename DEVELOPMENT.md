@@ -37,25 +37,30 @@ and strings first, the UI XML before the Lua that uses it, the bootstrap last.
 
 | # | File | Role |
 | --- | --- | --- |
-| 1 | `core/constants.lua` | namespace `IRY`, version, sources, priorities, settings defaults, `BuildDefaults()` |
+| 1 | `core/constants.lua` | namespace `IRY`, version, sources, priorities, settings defaults, icon constants, `BuildDefaults()` |
 | 2 | `lang/en.lua` | `IRY.L` (English) + `ZO_CreateStringId` for the keybind |
 | 3 | `lang/ru.lua` | overrides `IRY.L` when the client language is Russian |
 | 4 | `bindings.xml` | keybind `IRY_TOGGLE_BROWSER` → `IRY.Browser:Toggle()` |
 | 5 | `core/util.lua` | normalization, formatting, UTF-8-safe truncation |
-| 6 | `core/store.lua` | entities, indices, merge/undo, pending, purge |
+| 6 | `core/store.lua` | entities, indices, merge/undo, pending, purge, icon fields |
 | 7 | `core/resolver.lua` | read-only lookups used by render paths |
 | 8 | `core/print.lua` | chat output, notifications, `RefreshUI`, `PurgeOldPlayers` |
-| 9 | `track/observer.lua` | the single write gate `Observer:Observe`, snapshots, guild scan |
-| 10 | `track/rename.lua` | friend/group/character rename bridges |
-| 11 | `track/poller.lua` | timer that re-reads the reticle target |
-| 12 | `ui/targetframe.lua` | post-hooks on the reticle frame |
-| 13 | `ui/chat.lua` | player-link and kill-feed wrappers |
-| 14 | `ui/social.lua` | friends list and guild roster row decoration |
-| 15 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
-| 16 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
-| 17 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
-| 18 | `ui/commands.lua` | `/pa` and `/iry` |
-| 19 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
+| 9 | `core/iconpacks.lua` | the icon manifest: packs and their DDS paths |
+| 10 | `core/blacklist.lua` | in-memory cache of the game's Ignore list |
+| 11 | `core/icons.lua` | the single icon rule and the OdySupportIcons bridge |
+| 12 | `track/observer.lua` | the single write gate `Observer:Observe`, snapshots, guild scan |
+| 13 | `track/rename.lua` | friend/group/character rename bridges |
+| 14 | `track/poller.lua` | timer that re-reads the reticle target |
+| 15 | `ui/targetframe.lua` | post-hooks on the reticle frame |
+| 16 | `ui/chat.lua` | player-link and kill-feed wrappers |
+| 17 | `ui/social.lua` | friends, guild and ignore list row decoration |
+| 18 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
+| 19 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
+| 20 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
+| 21 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
+| 22 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
+| 23 | `ui/commands.lua` | `/pa` and `/iry` |
+| 24 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
 
 The manifest also declares `## OptionalDependsOn: LibAddonMenu-2.0`, so LAM is
 guaranteed to be loaded before `ui/settings.lua` runs when it is installed.
@@ -69,13 +74,16 @@ EVENT_ADD_ON_LOADED (addon name matches)
   ZO_SavedVars:NewAccountWide(svName, schema, nil, IRY.BuildDefaults())
   IRY.Store:Initialize(sv)          -- EnsureSchema + RebuildIndices
   IRY.Store:PrunePending()          -- pending older than pendingTtlDays
+  IRY.Blacklist:Initialize()        -- Ignore-list cache + events
+  IRY.Icons:Initialize()            -- OSI detection and event bridge
   IRY:RegisterCommands()
   IRY.Observer:Initialize()         -- game events
   IRY.Rename:Initialize()           -- rename events
   IRY.Poller:Initialize()           -- timer + reset events
   IRY.TargetFrame:Initialize()      -- ZO_PostHook
   IRY.Chat:Initialize()             -- link + kill feed wrappers
-  IRY.Social:Initialize()           -- friends/guild row hooks
+  IRY.Social:Initialize()           -- friends/guild/ignore row hooks
+  IRY.IconPicker:Initialize()       -- picker window and tiles
   IRY.Browser:Initialize()          -- build rows, register top level
   IRY.Settings:Initialize()         -- LAM panel (may be a no-op)
   checkApiVersion()                 -- chat warning only, never blocks
@@ -114,6 +122,8 @@ Player
   mergedAt     number?
   mergeReason  string?      -- conflict | conflict-approved | friend-rename |
                             -- group-rename | manual
+  icon         string?      -- one DDS path, shared by every surface
+  iconFrom     number?      -- merge provenance: the entity this icon came from
 ```
 
 ```
@@ -359,12 +369,14 @@ Re-installation is retried on `EVENT_PLAYER_ACTIVATED`, because the chat router
 may finish registering formatters after addons load, or another addon may
 replace the entry (`pChat` is the usual suspect).
 
-### 7.4 Friends list and guild roster (`ui/social.lua`)
+### 7.4 Friends list, guild roster and ignore list (`ui/social.lua`)
 
-These rows are drawn by the game, so this is display only. Two `ZO_PostHook`s —
-`FRIENDS_LIST_MANAGER:SetupEntry` and `GUILD_ROSTER_MANAGER:SetupEntry` — append
-` |c8F8F8F (Name)|r` to the `DisplayName` label. The real account name stays in
-front and in the sort key; nothing is replaced.
+These rows are drawn by the game, so this is display only. Three `ZO_PostHook`s —
+`FRIENDS_LIST_MANAGER:SetupEntry`, `GUILD_ROSTER_MANAGER:SetupEntry` and
+`IGNORE_LIST_MANAGER:SetupEntry` — append ` |c8F8F8F (Name)|r` to the
+`DisplayName` label. The real account name stays in front and in the sort key;
+nothing is replaced. Ignore rows carry only a character name, so manual icons
+fall back to a character lookup and the blacklist is asked about that same name.
 
 * The hook body reads the freshly set text and appends once. `SetupEntry`
   rewrites the label on every refresh, so no reset is needed; the colour marker
@@ -385,6 +397,16 @@ front and in the sort key; nothing is replaced.
   replacement by another addon is still covered.
 * The suffix comes from `Chat:SocialSuffix` (gated by `annotateSocial`), not from
   a second implementation.
+* The icon is an inline `|t<size>:<size>:<path>|t ` prefix in the same label.
+  `plain()` and `splitIcon()` strip it before measuring, so the width logic is
+  unchanged, and the prefix is rewritten in place instead of being appended
+  twice. `AppendSuffix` reserves its width explicitly.
+* OdySupportIcons can draw the same icon in its own `StatusIcon` overlay. When
+  `Icons:OsiHandles2D(surface, displayName)` says OSI is already drawing this
+  particular person's icon (OSI option on **and** the account is in our pushed
+  group map), our row skips only the inline icon — the remembered-name suffix is
+  still appended. Per-identity, not per-surface: friends outside the group never
+  have anything pushed and keep their inline icon.
 
 ### 7.5 Output helpers (`core/print.lua`)
 
@@ -398,6 +420,95 @@ front and in the sort key; nothing is replaced.
 * `IRY:RefreshUI` — the only "redraw everything" entry point.
 * `IRY:PurgeOldPlayers(days)` — shared by the settings button, the browser and
   `/pa purge`; reports the result and returns the removed count.
+
+---
+
+### 7.6 Player icons (`core/icons.lua`, `core/blacklist.lua`, `core/iconpacks.lua`)
+
+Every surface asks one place, `IRY.Icons`, for a texture; no surface decides on
+its own. That is what keeps one icon per player everywhere.
+
+**Resolution order** (`Icons:Resolve`): `showIcons` off → nothing; a manual
+`player.icon` → that path; `blacklistIcons` on and the character is ignored →
+the blacklist marker; otherwise nothing. `ForUnit` passes the **character name**
+to the blacklist (`GetUnitName`) and the entity id to the manual lookup;
+`GetUnitDisplayName` is an `@account` and would never match the Ignore list.
+
+**Library.** ESO cannot enumerate files, so `core/iconpacks.lua` is a hand
+written manifest `{ { id, title, icons = { path, ... } }, ... }`. `AllPaths`
+flattens and de-duplicates it and drops anything that fails `IRY.IsIconPath`
+(`IRememberYou/icons/<pack>/<name>.dds`, lowercase, no spaces). A bad path would
+render nothing silently, hence the check. The own library is deliberate: OSI's
+folder is not part of our release and may move.
+
+**Assigning.** `player.icon` is the single write target; `Store:SetIcon` and
+`Store:ClearIcon` validate the path, and both clear `iconFrom`. During a merge
+the destination inherits `src.icon` with `dst.iconFrom = srcId`, so undo can walk
+the merge chain and detach the icon from every entity that got it that way.
+The browser detail panel and `/pa icon` both call `Icons:Assign/Clear`, which
+end in `IRY:RefreshUI()`.
+
+**2D surfaces.** Target frame and browser list use the same inline
+`|t<size>:<size>:<path>|t ` markup; the social rows do too (see 7.4). The size
+comes from `settings.iconSize2d`, clamped to `IRY.ICON.min`/`max`
+(`socialMax` for social rows, 24 px for browser rows so the 26 px row does not
+grow).
+
+The target frame has two modes. When the name is rebuilt, the icon is part of the
+rebuilt line. When it is not (`replaceTargetName` off, or a player the store does
+not know yet — an ignored stranger must still get the marker), the icon is
+prefixed to the game's own text and the exact prefix is remembered on the label,
+so it can be taken away again without guessing which inline textures belong to
+the game.
+
+**Blacklist.** `core/blacklist.lua` keeps an in-memory map of lowercased
+character names, built from `GetNumIgnored`/`GetIgnoredInfo`, and is never stored
+in SavedVariables. `GetIgnoredInfo`'s argument order differs between API levels,
+so the name is taken as the first non-empty string returned. A question for one
+name prefers the client's own `IsIgnored(name)` when it exists and falls back to
+the map otherwise. The map is rebuilt on `EVENT_IGNORE_ADDED`,
+`EVENT_IGNORE_REMOVED`, `EVENT_IGNORE_NOTE_UPDATED` and `EVENT_PLAYER_ACTIVATED`;
+event constants a client does not expose are skipped instead of aborting
+`Initialize`. The marker path is `settings.blacklistIcon` or, while that is nil,
+the shipped `IRY.ICON.blacklistDefault` (`rooster.dds`), with the first icon of
+the first pack as the last resort if the shipped one is not in the manifest.
+
+**3D through OdySupportIcons (optional).** `_G.OSI` is usually nil at our load
+(OSI sorts after us), so `Icons:Initialize` listens for
+`EVENT_ADD_ON_LOADED` with `addOnName == "OdySupportIcons"`, waits one
+`zo_callLater(…, 0)` so OSI's own initialisation and cache restore have finished,
+then applies. Every OSI call is guarded and wrapped in `pcall`.
+
+* Group members: for each `groupN` the icon is pushed with
+  `OSI.SetCustomIconForUnit(lower(displayName), path, {1,1,1})`. OSI keys
+  `special` by the lowercased display name **exactly as the game returns it**
+  (`@account` on PC); our bookkeeping key strips the `@` to recognise the same
+  person on 2D rows.
+* Before a push, `OSI.special[raw]` and `OSI`'s cache entry are snapshotted. If
+  `save` is on, `SetCustomIconForUnit` writes our temporary icon into OSI's
+  SavedVariables; `UpdateCache(raw, saved)` immediately puts the old value back.
+  Removing restores the previous special (or cache) and then the cache.
+* The reticle target cannot use `special` (group only), so it is one
+  `OSI.CreatePositionIcon` whose callback reads
+  `GetUnitRawWorldPosition("reticleover")` **inside OSI's own update loop** and
+  updates `icon.x/y/z`. Texture/size/offset live in `icon.data`; a changed
+  texture is written there and pushed to the control with `UpdateIconData`.
+  `DiscardPositionIcon` is called when the target stops being a player or our
+  icon disappears, because otherwise the slot stays visible.
+* `Icons:Apply` is idempotent: it only calls OSI when the path changed or OSI's
+  special no longer holds our texture. It also unpushes keys that are no longer
+  present in the group, so a member leaving or renaming cannot leave an icon
+  behind.
+* `showIcons == false` calls `RemoveAll`: every pushed key is restored and the
+  position icon is discarded. The same happens on `EVENT_IGNORE_*` changes via
+  `IRY:RefreshUI()`, and on login through a deferred `Apply` that runs after
+  OSI's `EVENT_PLAYER_ACTIVATED` handler.
+* Events wired: group join/left/connected/disconnected/account-name-updated,
+  `EVENT_UNIT_CHARACTER_NAME_CHANGED` (only `groupN` and `reticleover`),
+  `EVENT_RETICLE_TARGET_CHANGED`, `EVENT_RETICLE_TARGET_PLAYER_CHANGED`, the two
+  ignore events, `EVENT_ADD_ON_LOADED`, `EVENT_PLAYER_ACTIVATED`.
+* Without OSI the 2D surfaces are unaffected; `Icons:OsiStatus()` reports
+  `ready`, `custom-off` (OSI's "show custom 3D icons" is disabled) or `missing`.
 
 ---
 
@@ -539,11 +650,12 @@ fully usable through commands and the keybind.
   values and the "Defaults" button resets to `IRY.SettingsDefaults` (through the
   same setters, so side effects run).
 * Getters read `sv.settings` on every call; setters write directly to it.
-* Side effects: target-frame checkboxes call `IRY:RefreshUI()`; `captureTarget`,
-  `pollTarget` and `pollIntervalMs` call `IRY.Poller:Apply()`.
+* Side effects: target-frame and icon checkboxes call `IRY:RefreshUI()`;
+  `captureTarget`, `pollTarget` and `pollIntervalMs` call `IRY.Poller:Apply()`.
 
-Sections: target frame, chat, data collection, linking, maintenance. The first
-widget is the "open the player list" button.
+Sections: target frame, chat, data collection, linking, player icons,
+maintenance. The first widget is the "open the player list" button; the icon
+section also opens the blacklist icon picker.
 
 ---
 
@@ -567,9 +679,15 @@ plain `if/elseif` chain on the lower-cased first word.
   reuse the same parsing.
 
 Debug subcommands: `on|off`, `fake <acc> <char>`, `bridge <acc> <char>`,
-`conflict`, `dump <id>`, `wipe confirm`. `fake` and `bridge` both call
+`conflict`, `dump <id>`, `ignore`, `wipe confirm`. `fake` and `bridge` both call
 `Observe` and differ only in the printed wording; `conflict` simulates the
-A/B → C/D → C/B merge case; `wipe confirm` erases the database and resets ids.
+A/B → C/D → C/B merge case; `ignore` dumps the cached Ignore list;
+`wipe confirm` erases the database and resets ids.
+
+Icon commands: `/pa icons [on|off]` toggles `showIcons` (no argument prints the
+state, UI size, blacklist marking and OSI status); `/pa icon <id> [path|clear]`
+shows, assigns or clears one player's icon through `Icons:ResolvePlayer`. A path
+must satisfy `IRY.IsIconPath`.
 
 ---
 
@@ -599,6 +717,10 @@ here is also filled in by `Store:EnsureSchema` for existing saves.
 | `autoAcceptProbable` | `false` | bool | checkbox | bridges apply immediately |
 | `autoMergeOnConflict` | `true` | bool | checkbox | merge conflicts immediately |
 | `pendingTtlDays` | `30` | number | — | pending expiry on login (code only) |
+| `showIcons` | `true` | bool | checkbox | master switch for every icon |
+| `iconSize2d` | `28` | number | slider 16–40, step 2 | inline icon size in the UI |
+| `blacklistIcons` | `true` | bool | checkbox | mark ignored characters |
+| `blacklistIcon` | absent | string | button → picker | marker path; absent = shipped `rooster.dds` |
 | `purgeAfterDays` | `0` | number | slider 0–3650, step 30 | retention, 0 = never |
 | `debug` | `false` | bool | checkbox | debug lines |
 | `browserLeft`, `browserTop` | absent | number | — | saved window position |
@@ -674,6 +796,10 @@ in both languages.
   `FormatAccount` handle the common cases but this is the least tested area.
 * Pending entries are pruned on login only (`pendingTtlDays`), not on a timer.
 * There is no import/export and no backup; `IRememberYouSV` is the only copy.
+* Icons need a non-empty `core/iconpacks.lua` manifest; without shipped DDS
+  files nothing is drawn. 3D icons additionally need OdySupportIcons with its
+  "show custom 3D icons" option on. OSI's own unique/LibCustomIcons overlays are
+  independent of our rule and can still appear next to our icon in a 2D list.
 
 ---
 
@@ -728,6 +854,17 @@ Before a release, in a live client:
     them in a different alliance (campaign guest, group) — the value updates on
     the next observation and does not reset to "unknown" after a kill-feed line
     without info.
+20. Icons, 2D: assign an icon from the detail panel; it appears on the target
+    frame, in friends, guild, ignore and the browser row for that person; the
+    source label says "manual". Clear it — the picture disappears everywhere.
+21. Icons, blacklist: `/ignore` a character; the marker appears on every surface
+    once the ignore list event fires; a manual icon on the same person wins.
+    Toggle `blacklistIcons` and `/pa icons off` — everything hides and comes back.
+22. Icons, 3D: with OdySupportIcons loaded, a group member gets the icon above
+    their head and the reticle target gets it too; assign an OSI icon of its own
+    to a group member first and confirm it comes back after you clear ours.
+    Close the group / leave it — no icon stays behind. Without OSI the 2D
+    surfaces still work and `/pa icons` reports "not loaded".
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's
@@ -738,7 +875,10 @@ social row templates (the suffix fitting relies on it), the resize handle on
 every UI scale, detail-panel anchoring at the screen edges, `FRIENDS_LIST_MANAGER` /
 `GUILD_ROSTER_MANAGER` `SetupEntry` argument order, localized alliance names,
 and `BringWindowToTop` actually raising the list (it is a C-side control method,
-so it cannot be checked statically).
+so it cannot be checked statically). Also unverified: `OSI.special` key shape on
+console, `GetUnitRawWorldPosition("reticleover")` returning coordinates for every
+targetable player, OSI's cache being restored exactly as snapshotted, and
+`GetIgnoredInfo` returning a character name on every client language.
 
 ---
 

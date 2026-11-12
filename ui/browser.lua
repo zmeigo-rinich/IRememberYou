@@ -34,6 +34,8 @@ local DETAIL_LINE_HEIGHT  = 18
 local MAX_DETAIL_LINES    = 40
 local DETAIL_WIDTH        = 320
 local DETAIL_GAP          = 8
+-- The row icon must not make the row taller, so the UI setting is capped here.
+local ROW_ICON_MAX        = 24
 
 -- Vertical space reserved by the fixed header and the footer.
 local ROWS_TOP_OFFSET    = 124
@@ -65,6 +67,16 @@ local state = {
 
 local function settings()
     return IRY.Store:GetSettings() or {}
+end
+
+local function rowIconSize()
+    local size = tonumber(settings().iconSize2d) or IRY.ICON.default
+    if size < IRY.ICON.min then
+        size = IRY.ICON.min
+    elseif size > ROW_ICON_MAX then
+        size = ROW_ICON_MAX
+    end
+    return size
 end
 
 local function shortTime(timestamp)
@@ -218,7 +230,16 @@ function Browser:RenderRows()
             else
                 local player = item.player
                 idLabel:SetText(string.format("#%d", player.id))
-                nameLabel:SetText(player.displayName)
+
+                -- The icon rides inside the label text, so the row layout and
+                -- the existing ellipsis behaviour stay untouched.
+                local prefix = ""
+                local _, iconPath = IRY.Icons:ResolvePlayer(player.id)
+                if iconPath then
+                    local size = rowIconSize()
+                    prefix = string.format("|t%d:%d:%s|t ", size, size, iconPath)
+                end
+                nameLabel:SetText(prefix .. player.displayName)
                 metaLabel:SetText(string.format("%d acc / %d char",
                     self:CountKeys(player.aliases), self:CountKeys(player.characters)))
                 seenLabel:SetText(shortTime(player.updatedAt))
@@ -329,6 +350,46 @@ function Browser:BuildDetailItems(player)
     return items
 end
 
+-- Icon block in the detail panel. It always shows which rule produced the
+-- picture; Clear is only enabled when the icon is a manual assignment, so a
+-- blacklist marker cannot be "cleared" by accident.
+function Browser:RenderDetailIcon(player)
+    local texture = IRY_BrowserDetailIcon
+    if not texture then
+        return
+    end
+
+    local source, path = IRY.Icons:ResolvePlayer(player.id)
+    if path then
+        texture:SetTexture(path)
+        texture:SetHidden(false)
+    else
+        texture:SetHidden(true)
+    end
+
+    local label = IRY_BrowserDetailIconName
+    if label then
+        if source == IRY.ICON_SOURCE.MANUAL then
+            label:SetText(IRY.L.ICON_SOURCE_MANUAL)
+            label:SetColor(0.49, 0.98, 0.49, 1)
+        elseif source == IRY.ICON_SOURCE.BLACKLIST then
+            label:SetText(IRY.L.ICON_SOURCE_BLACKLIST)
+            label:SetColor(0.94, 0.80, 0.49, 1)
+        elseif source == IRY.ICON_SOURCE.DISABLED then
+            label:SetText(IRY.L.ICON_SOURCE_DISABLED)
+            label:SetColor(0.56, 0.56, 0.56, 1)
+        else
+            label:SetText(IRY.L.DETAIL_ICON_NONE)
+            label:SetColor(0.56, 0.56, 0.56, 1)
+        end
+    end
+
+    local clear = IRY_BrowserDetailIconClear
+    if clear then
+        clear:SetEnabled(player.icon ~= nil)
+    end
+end
+
 function Browser:RenderDetailPanel()
     local panel = IRY_BrowserDetailPanel
     if not panel then
@@ -350,11 +411,12 @@ function Browser:RenderDetailPanel()
     end
 
     panel:SetHidden(false)
+    self:RenderDetailIcon(player)
 
     local linesHeight = IRY_BrowserDetailPanelLines and IRY_BrowserDetailPanelLines:GetHeight() or 0
     if not linesHeight or linesHeight <= 0 then
         local panelHeight = panel:GetHeight() or MIN_HEIGHT
-        linesHeight = panelHeight - 68
+        linesHeight = panelHeight - 152
     end
 
     local visible = math.floor(linesHeight / DETAIL_LINE_HEIGHT)
@@ -645,6 +707,23 @@ function Browser:ResetName()
     self:Refresh()
 end
 
+function Browser:PickIcon()
+    if state.tab ~= "players" or not state.detailOpen or not state.detailPlayerId then
+        return
+    end
+
+    IRY.IconPicker:OpenPlayer(IRY.Store:ResolveFinal(state.detailPlayerId))
+end
+
+function Browser:ClearIcon()
+    if state.tab ~= "players" or not state.detailOpen or not state.detailPlayerId then
+        return
+    end
+
+    -- RefreshUI inside Clear redraws both the row and the open detail panel.
+    IRY.Icons:Clear(state.detailPlayerId)
+end
+
 function Browser:MergeSelected()
     if state.tab ~= "players" or not state.selected then
         return
@@ -868,6 +947,9 @@ function Browser:Hide()
     -- The detail panel goes away with the list, both visually (it is a child)
     -- and in state, so reopening the list starts with a clean slate.
     self:CloseDetail()
+    if IRY.IconPicker then
+        IRY.IconPicker:Close()
+    end
     self:SavePosition()
 
     if usesTopLevel then
@@ -933,6 +1015,9 @@ function Browser:Initialize()
     IRY_BrowserPurge:SetText(IRY.L.BTN_PURGE)
     IRY_BrowserDetail:SetText(IRY.L.BROWSER_SELECT)
     IRY_BrowserDetailPanelHint:SetText(IRY.L.DETAIL_HINT)
+    IRY_BrowserDetailIconPick:SetText(IRY.L.BTN_ICON_PICK)
+    IRY_BrowserDetailIconClear:SetText(IRY.L.BTN_ICON_CLEAR)
+    IRY_BrowserDetailIconName:SetText(IRY.L.DETAIL_ICON_NONE)
     IRY_BrowserDetailPanel:SetHidden(true)
 
     -- The browser is a read surface; it should not steal the mouse cursor

@@ -21,6 +21,12 @@ Everything it prints is local to your client.
   name you know them by instead of the current `@account`. Difficulty icon and
   target marker stay where they were. The line under the name is rebuilt as
   `character name + title`.
+* **Player icons** — one icon per player, chosen from a library shipped with the
+  addon, on the target frame, in the friends list, guild roster, ignore list and
+  player browser. With **OdySupportIcons** installed the same icon also floats
+  above group members and the reticle target. Entries on the game's ignore list
+  can get a marker icon automatically (a rooster by default); a manually assigned
+  icon always wins.
 * **Chat** — player links get a suffix: `@NewName (OldName)`. The link itself is
   untouched, clicking it still works.
 * **Friends and guild roster** — the remembered name is appended to the account
@@ -99,6 +105,8 @@ All commands start with `/pa` (alias `/iry`).
 | `/pa pending` | links waiting for confirmation |
 | `/pa yes [n]` / `/pa no [n]` | confirm / reject a pending link |
 | `/pa purge [days]` | forget old players without custom names |
+| `/pa icons [on\|off]` | show or hide every player icon |
+| `/pa icon <id> [path\|clear]` | show, set or clear one player's icon |
 | `/pa debug on\|off` | debug output in chat |
 
 IDs are shown as `#12`; `12`, `#12`, `@Account` and a character name all work
@@ -134,6 +142,8 @@ a record. You can change that with “Accept probable links without asking”.
   (default 1000 ms).
 * **Linking** — how loudly to report ID changes, whether probable links are
   accepted automatically, whether conflicts are merged automatically.
+* **Player icons** — the master switch, the UI icon size, the ignore-list marker
+  and its icon. The 3D part is drawn by OdySupportIcons, if it is installed.
 * **Maintenance** — retention period (`0` = never forget), a “forget old players
   now” button, and debug output.
 
@@ -158,6 +168,9 @@ delete anything by itself.
 * In the friends list and guild roster the remembered name shares the name
   column with the account: a long one is shortened with an ellipsis. Nothing is
   resized, so the location column never shifts.
+* 3D icons need **OdySupportIcons**; without it every 2D surface still works.
+  The icon library ships with the addon: 75 icons in `icons/base`, listed in
+  `core/iconpacks.lua` and chosen in the detail panel or with `/pa icon`.
 
 ---
 
@@ -177,6 +190,16 @@ delete anything by itself.
 ---
 
 ## Changelog
+
+**0.4.0**
+* one icon per player across the target frame, friends list, guild roster,
+  ignore list and player browser;
+* icons are assigned manually from the detail panel or `/pa icon`, and the
+  whole set can be switched off with `/pa icons off` or the settings;
+* entries on the game's ignore list can be marked with a dedicated icon;
+* 3D icons above group members and the reticle target through
+  **OdySupportIcons**, including its own settings and saved icons being
+  preserved.
 
 **0.3.0**
 * the player list is resizable; the number of rows follows the window height;
@@ -216,9 +239,10 @@ IRememberYou/
   README.ru.md            this file (Russian)
   DEVELOPMENT.md          internals (English)
   DEVELOPMENT.ru.md       internals (Russian)
-  core/                   constants, store, resolver, printing
+  core/                   constants, store, resolver, printing, icons, blacklist
+  icons/                  the curated DDS icon library (listed in core/iconpacks.lua)
   track/                  observation, rename detection, target poll
-  ui/                     target frame, chat, friends/guild list, browser, settings, commands
+  ui/                     target frame, chat, friends/guild list, browser, icon picker, settings, commands
   lang/                   English and Russian strings
 ```
 

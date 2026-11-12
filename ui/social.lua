@@ -20,6 +20,8 @@ IRY.Social = Social
 
 local SUFFIX_COLOR = "|c8F8F8F"
 local SUFFIX_MARK = SUFFIX_COLOR .. " ("
+-- A leading inline texture is our icon marker. Captures width, height, path.
+local ICON_MARK = "^|t(%d+):(%d+):([^|]+)|t ?"
 -- Only used while the row has not been laid out yet and reports no width.
 local FALLBACK_LABEL_WIDTH = 225
 -- Free pixels below which a shortened remembered name is not worth showing:
@@ -34,10 +36,21 @@ local function keyboardMode()
     return not (IsInGamepadPreferredMode and IsInGamepadPreferredMode())
 end
 
--- Colour codes must not reach the measuring function: the visible width of
--- "|c8F8F8Fabc|r" is the width of "abc".
+-- Colour codes and inline textures must not reach the measuring function: the
+-- visible width of "|c8F8F8Fabc|r" is the width of "abc".
 local function plain(text)
-    return (text:gsub("|c%x%x%x%x%x%x", ""):gsub("|r", ""))
+    return (text:gsub("|c%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|t%d+:%d+:[^|]+|t", ""))
+end
+
+-- Split a label text into the icon marker we may have added and the rest.
+local function splitIcon(text)
+    local width, height, path = text:match(ICON_MARK)
+    if not path then
+        return nil, text
+    end
+
+    return { width = tonumber(width), height = tonumber(height), path = path },
+        (text:gsub(ICON_MARK, "", 1))
 end
 
 local function measureWidth(label, value)
@@ -102,7 +115,10 @@ function Social:AppendSuffix(label, baseText, suffix)
     if not room or room <= 0 then
         room = FALLBACK_LABEL_WIDTH
     end
-    room = room - 2
+    -- The icon is rendered inside the label but removed from measurements, so
+    -- reserve its width explicitly.
+    local iconWidth = tonumber(baseText:match("^|t(%d+):")) or 0
+    room = room - 2 - iconWidth
 
     local baseWidth = measureWidth(label, plain(baseText))
     if not baseWidth then
@@ -146,7 +162,53 @@ function Social:AppendSuffix(label, baseText, suffix)
     label:SetText(baseText .. SUFFIX_COLOR .. " (" .. best .. "...)|r")
 end
 
-function Social:DecorateRow(control, data)
+function Social:IconMark(path)
+    local size = tonumber(settings().iconSize2d) or IRY.ICON.default
+    if size < IRY.ICON.min then
+        size = IRY.ICON.min
+    elseif size > IRY.ICON.socialMax then
+        size = IRY.ICON.socialMax
+    end
+
+    return string.format("|t%d:%d:%s|t ", size, size, path)
+end
+
+-- Friends and guild rows carry @account + character; ignore rows carry only a
+-- character name. Manual icons are looked up by whichever keys the row has.
+function Social:IconFor(data, surface)
+    if not data then
+        return nil
+    end
+
+    if surface == "ignore" then
+        local character = IRY.Util.NormalizeCharacter(data.displayName)
+        if not character then
+            return nil
+        end
+
+        local id = IRY.Store:FindByCharacter(character)
+        return IRY.Icons:Effective(id and IRY.Store:ResolveFinal(id) or nil, character)
+    end
+
+    local account = IRY.Util.NormalizeAccount(data.displayName)
+    local character
+    if data.characterName and data.characterName ~= "" then
+        character = IRY.Util.NormalizeCharacter(data.characterName)
+    end
+
+    if not account and not character then
+        return nil
+    end
+
+    local id = account and IRY.Store:FindByAccount(account)
+    if not id and character then
+        id = IRY.Store:FindByCharacter(character)
+    end
+
+    return IRY.Icons:Effective(id and IRY.Store:ResolveFinal(id) or nil, character or account)
+end
+
+function Social:DecorateRow(control, data, surface)
     if not control or not keyboardMode() then
         return
     end
@@ -156,38 +218,66 @@ function Social:DecorateRow(control, data)
         return
     end
 
+    local raw = label:GetText() or ""
+    local existing, rest = splitIcon(raw)
+    local path = self:IconFor(data, surface)
+    if path and IRY.Icons.OsiHandles2D and IRY.Icons:OsiHandles2D(surface, data and data.displayName) then
+        -- OSI's own overlay already draws this player's icon in the same row.
+        -- The remembered-name suffix is still ours to append.
+        path = nil
+    end
+
+    if rest:find(SUFFIX_MARK, 1, true) then
+        -- SetupEntry or a second hook already decorated the row. Refresh the
+        -- icon in place and never append the suffix twice.
+        if path then
+            label:SetText(self:IconMark(path) .. rest)
+        elseif existing then
+            label:SetText(rest)
+        end
+        return
+    end
+
+    local base = rest
+    if path then
+        base = self:IconMark(path) .. rest
+    elseif existing then
+        -- The icon disappeared (master toggle, ignore list change, a group
+        -- member leaving); do not leave a stale picture in the row.
+        label:SetText(rest)
+    end
+
     local suffix = self:SuffixFor(data)
     if not suffix then
+        if path then
+            label:SetText(base)
+        end
         return
     end
 
-    local text = label:GetText() or ""
-    -- SetupEntry rewrites the label on every refresh. The marker only matters
-    -- if this hook is somehow installed twice for the same row.
-    if text:find(SUFFIX_MARK, 1, true) then
-        return
-    end
-
-    self:AppendSuffix(label, text, suffix)
+    self:AppendSuffix(label, base, suffix)
 end
 
-local function hookManager(manager)
+local function hookManager(manager, surface)
     if not manager or not ZO_PostHook then
         return false
     end
 
     ZO_PostHook(manager, "SetupEntry", function(_, control, data)
-        IRY.Social:DecorateRow(control, data)
+        IRY.Social:DecorateRow(control, data, surface)
     end)
     return true
 end
 
 function Social:Install()
     if not self.friendsHooked then
-        self.friendsHooked = hookManager(FRIENDS_LIST_MANAGER)
+        self.friendsHooked = hookManager(FRIENDS_LIST_MANAGER, "friends")
     end
     if not self.guildHooked then
-        self.guildHooked = hookManager(GUILD_ROSTER_MANAGER)
+        self.guildHooked = hookManager(GUILD_ROSTER_MANAGER, "guild")
+    end
+    if not self.ignoreHooked then
+        self.ignoreHooked = hookManager(IGNORE_LIST_MANAGER, "ignore")
     end
 end
 

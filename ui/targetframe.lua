@@ -78,18 +78,60 @@ local function unitTagOf(frame)
     return unitTag
 end
 
-function TargetFrame:ApplyName(frame)
-    if not settings().replaceTargetName then
-        return
+local function iconPrefix(unitTag)
+    local path = IRY.Icons:ForUnit(unitTag)
+    if not path then
+        return nil
     end
 
+    local size = tonumber(settings().iconSize2d) or IRY.ICON.default
+    if size < IRY.ICON.min then
+        size = IRY.ICON.min
+    elseif size > IRY.ICON.max then
+        size = IRY.ICON.max
+    end
+
+    return string.format("|t%d:%d:%s|t ", size, size, path)
+end
+
+local function withIcon(unitTag, text)
+    local prefix = iconPrefix(unitTag)
+    if not prefix then
+        return text
+    end
+
+    return prefix .. text
+end
+
+-- The game's own name line is left alone here: the icon is inserted in front
+-- of it and remembered on the label, so it can be taken away again without
+-- guessing which of the inline textures the game put there itself. Used when
+-- the name is not rebuilt (replaceTargetName off, or a player we do not know
+-- yet -- an ignored stranger must still get the marker).
+local function decorateOwnText(label, unitTag)
+    local current = label:GetText() or ""
+    local applied = label.iryIconApplied
+    local base = current
+
+    if applied and current:sub(1, #applied) == applied then
+        base = current:sub(#applied + 1)
+    end
+
+    local prefix = iconPrefix(unitTag)
+    if prefix then
+        label:SetText(prefix .. base)
+        label.iryIconApplied = prefix
+    elseif applied and current:sub(1, #applied) == applied then
+        label:SetText(base)
+        label.iryIconApplied = nil
+    else
+        label.iryIconApplied = nil
+    end
+end
+
+function TargetFrame:ApplyName(frame)
     local unitTag = unitTagOf(frame)
     if not unitTag then
-        return
-    end
-
-    local name = stableName(unitTag)
-    if not name or name == "" then
         return
     end
 
@@ -98,7 +140,18 @@ function TargetFrame:ApplyName(frame)
         return
     end
 
-    local text = withDifficultyIcon(unitTag, name)
+    local name = settings().replaceTargetName and stableName(unitTag) or nil
+    if not name or name == "" then
+        decorateOwnText(label, unitTag)
+        return
+    end
+
+    -- The rebuilt line carries the icon itself; drop the icon-only bookmark so
+    -- a later game refresh cannot strip a prefix twice.
+    label.iryIconApplied = nil
+
+    local text = withIcon(unitTag, name)
+    text = withDifficultyIcon(unitTag, text)
     text = withTargetMarker(frame, unitTag, text)
 
     label:SetText(text)

@@ -449,6 +449,14 @@ function Store:Merge(srcId, dstId, reason)
         dst.isCustom = true
     end
 
+    -- The icon belongs to the player it was assigned to. It is inherited only
+    -- when the surviving entity has none. iconFrom records the direct source so
+    -- undo can detach the inheritance without touching a manual choice.
+    if not dst.icon and src.icon then
+        dst.icon = src.icon
+        dst.iconFrom = srcId
+    end
+
     if src.notes and src.notes ~= "" then
         if dst.notes and dst.notes ~= "" then
             dst.notes = dst.notes .. "\n" .. src.notes
@@ -494,6 +502,20 @@ function Store:UndoMerge(srcId)
         if index.character[character] == dstId then
             dst.characters[character] = nil
         end
+    end
+
+    -- Put the inherited icon back on src. A survivor may have inherited the same
+    -- texture through a later merge, so detach the whole chain: src -> child ->
+    -- child's child, stopping as soon as an entity owns its icon.
+    local child = src
+    while child.mergedInto do
+        local nextChild = sv.players[child.mergedInto]
+        if not nextChild or nextChild.iconFrom ~= child.id then
+            break
+        end
+        nextChild.icon = nil
+        nextChild.iconFrom = nil
+        child = nextChild
     end
 
     src.mergedInto = nil
@@ -563,6 +585,46 @@ function Store:ResetDisplayName(id)
     return true, player.displayName
 end
 
+-- Icons ----------------------------------------------------------------------
+-- player.icon is a single texture path, shared by every surface and by the
+-- 3D bridge. The path is validated here so a typo cannot reach the renderer.
+
+function Store:GetIconPath(id)
+    id = self:ResolveFinal(id)
+    local player = id and sv and sv.players[id]
+    return player and player.icon or nil
+end
+
+function Store:SetIcon(id, path)
+    id = self:ResolveFinal(id)
+    local player = id and sv and sv.players[id]
+    if not player then
+        return false, "not-found"
+    end
+
+    if not IRY.IsIconPath(path) then
+        return false, "invalid"
+    end
+
+    player.icon = path
+    player.iconFrom = nil
+    player.updatedAt = now()
+    return true
+end
+
+function Store:ClearIcon(id)
+    id = self:ResolveFinal(id)
+    local player = id and sv and sv.players[id]
+    if not player then
+        return false, "not-found"
+    end
+
+    player.icon = nil
+    player.iconFrom = nil
+    player.updatedAt = now()
+    return true
+end
+
 function Store:List(limit)
     if not sv then
         return {}
@@ -606,6 +668,11 @@ function Store:Dump(id)
 
     if player.mergedInto then
         lines[#lines + 1] = string.format("  merged into #%d  (%s)", player.mergedInto, tostring(player.mergeReason))
+    end
+
+    if player.icon then
+        lines[#lines + 1] = "  icon: " .. player.icon
+            .. (player.iconFrom and ("  (from #" .. tostring(player.iconFrom) .. ")") or "")
     end
 
     for _, account in ipairs(sortedKeys(player.aliases)) do

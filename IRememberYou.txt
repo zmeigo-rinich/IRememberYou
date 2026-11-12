@@ -1,9 +1,9 @@
 ## Title: I remember you!
 ## APIVersion: 101050 101051
-## Version: 0.3.0
-## AddOnVersion: 300
+## Version: 0.4.0
+## AddOnVersion: 400
 ## SavedVariables: IRememberYouSV
-## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, and adds a resizable browsable player list with per-character alliance details.
+## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, adds a resizable browsable player list, and gives each player one icon on every surface, including 3D icons through OdySupportIcons.
 ## Author: I remember you! contributors
 ## OptionalDependsOn: LibAddonMenu-2.0
 
@@ -15,6 +15,9 @@ core/util.lua
 core/store.lua
 core/resolver.lua
 core/print.lua
+core/iconpacks.lua
+core/blacklist.lua
+core/icons.lua
 track/observer.lua
 track/rename.lua
 track/poller.lua
@@ -23,6 +26,8 @@ ui/chat.lua
 ui/social.lua
 ui/browser.xml
 ui/browser.lua
+ui/iconpicker.xml
+ui/iconpicker.lua
 ui/settings.lua
 ui/commands.lua
 IRememberYou.lua

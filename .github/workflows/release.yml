@@ -82,8 +82,7 @@ jobs:
                  "$pkg/IRememberYou/.github" \
                  "$pkg/IRememberYou/.gitignore" \
                  "$pkg/IRememberYou/.gitattributes" \
-                 "$pkg/IRememberYou/DEVELOPMENT.md" \
-                 "$pkg/IRememberYou/DEVELOPMENT.ru.md"
+                 "$pkg/IRememberYou"/DEVELOPMENT*
           test -f "$pkg/IRememberYou/IRememberYou.txt"
           if find "$pkg/IRememberYou" -mindepth 1 \( -name 'DEVELOPMENT*' -o -name '.*' \) -print -quit | grep -q .; then
             echo "::error::The package still contains development files"

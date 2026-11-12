@@ -1,0 +1,78 @@
+<GuiXml>
+  <Controls>
+
+    <!-- One icon in the picker grid. The texture is set from Lua; the backdrop
+         gives transparent icons a visible square, and Selected marks the
+         current choice. -->
+    <Button name="IRY_IconTile" virtual="true" mouseEnabled="true">
+      <Dimensions x="64" y="64" />
+      <OnClicked>
+        IRY.IconPicker:OnTileClicked(self)
+      </OnClicked>
+      <Controls>
+        <Backdrop name="$(parent)BG" inherits="ZO_ThinBackdrop" centerColor="202020" edgeColor="505050" alpha="0.55" />
+        <Texture name="$(parent)Texture">
+          <AnchorFill />
+        </Texture>
+        <Backdrop name="$(parent)Selected" inherits="ZO_ThinBackdrop" centerColor="7FBF7F" edgeColor="7FBF7F" alpha="0.30" hidden="true" />
+      </Controls>
+    </Button>
+
+    <TopLevelControl name="IRY_IconPicker" hidden="true" movable="true" clampedToScreen="true" mouseEnabled="true">
+      <Dimensions x="604" y="460" />
+      <Anchor point="CENTER" />
+
+      <OnMouseWheel>
+        IRY.IconPicker:TurnPage(-delta)
+      </OnMouseWheel>
+
+      <Controls>
+        <Backdrop name="IRY_IconPickerBG" inherits="ZO_DefaultBackdrop" />
+
+        <Label name="IRY_IconPickerTitle" font="ZoFontGameBold" color="FFFFFF">
+          <Anchor point="TOPLEFT" offsetX="16" offsetY="10" />
+          <Dimensions x="520" y="22" />
+        </Label>
+
+        <Button name="IRY_IconPickerClose" inherits="ZO_CloseButton">
+          <Anchor point="TOPRIGHT" offsetX="-10" offsetY="8" />
+          <OnClicked>
+            IRY.IconPicker:Close()
+          </OnClicked>
+        </Button>
+
+        <Control name="IRY_IconPickerGrid">
+          <Anchor point="TOPLEFT" offsetX="18" offsetY="44" />
+          <Dimensions x="568" y="352" />
+        </Control>
+
+        <Label name="IRY_IconPickerEmpty" font="ZoFontGame" color="8F8F8F" wrapMode="WORD_WRAP">
+          <Anchor point="TOPLEFT" offsetX="30" offsetY="160" />
+          <Dimensions x="544" y="80" />
+        </Label>
+
+        <Button name="IRY_IconPickerPrev" inherits="ZO_DefaultButton" text="&lt;">
+          <Dimensions x="40" y="24" />
+          <Anchor point="TOPLEFT" offsetX="18" offsetY="412" />
+          <OnClicked>
+            IRY.IconPicker:TurnPage(-1)
+          </OnClicked>
+        </Button>
+
+        <Label name="IRY_IconPickerPageLabel" font="ZoFontGameSmall" color="8F8F8F" verticalAlignment="CENTER">
+          <Anchor point="TOPLEFT" offsetX="66" offsetY="416" />
+          <Dimensions x="472" y="18" />
+        </Label>
+
+        <Button name="IRY_IconPickerNext" inherits="ZO_DefaultButton" text="&gt;">
+          <Dimensions x="40" y="24" />
+          <Anchor point="TOPRIGHT" offsetX="-18" offsetY="412" />
+          <OnClicked>
+            IRY.IconPicker:TurnPage(1)
+          </OnClicked>
+        </Button>
+      </Controls>
+    </TopLevelControl>
+
+  </Controls>
+</GuiXml>

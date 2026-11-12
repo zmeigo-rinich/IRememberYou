@@ -11,6 +11,29 @@ user-visible change.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-12
+
+### Added
+
+- One icon per player, taken from a curated DDS library shipped inside the
+  addon (75 icons in `icons/base`). The same texture appears in the reticle
+  target frame, the friends list, the guild roster, the ignore list and the
+  player browser.
+- A manual assignment flow: the browser detail panel shows the current icon and
+  opens an 8 x 5 picker; `/pa icon <id> [path|clear]` does the same from chat.
+  The chosen icon survives merges and is removed with the merge when undone.
+- Ignore-list marking: every character on the game's Ignore list can get a
+  dedicated marker icon, a rooster by default. A manually assigned icon always
+  wins, and the marker is rebuilt from the live ignore list rather than stored
+  in SavedVariables.
+- A master switch (`showIcons`, `/pa icons on|off`) that removes every picture
+  from every surface at once.
+- 3D icons through **OdySupportIcons**: group members get the icon above their
+  heads, the reticle target is drawn as an OSI position icon. Icons assigned in
+  OSI are snapshotted and restored, and OSI's SavedVariables are never touched.
+- An "Icons" settings section: master switch, UI icon size, ignore-list marking,
+  the blacklist icon picker and a short note about the 3D dependency.
+
 ## [0.3.0] - 2026-11-11
 
 First documented release. Versions 0.2.0 and 0.2.1 predate this changelog;

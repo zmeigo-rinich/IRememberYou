@@ -35,6 +35,10 @@ end
 function IRY:RefreshUI()
     self:RefreshTargets()
 
+    if IRY.Icons then
+        IRY.Icons:Apply()
+    end
+
     if IRY.Browser then
         IRY.Browser:RefreshIfShown()
     end

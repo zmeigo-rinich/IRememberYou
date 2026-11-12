@@ -315,6 +315,83 @@ local function cmdPurge(daysText)
     IRY:RefreshUI()
 end
 
+local function sourceLabel(source)
+    if source == IRY.ICON_SOURCE.MANUAL then
+        return IRY.L.ICON_SOURCE_MANUAL
+    end
+    if source == IRY.ICON_SOURCE.BLACKLIST then
+        return IRY.L.ICON_SOURCE_BLACKLIST
+    end
+    if source == IRY.ICON_SOURCE.DISABLED then
+        return IRY.L.ICON_SOURCE_DISABLED
+    end
+    return IRY.L.ICON_SOURCE_NONE
+end
+
+local function cmdIcons(rest)
+    local settings = IRY.Store:GetSettings() or {}
+    local action = (rest or ""):lower()
+
+    if action == "on" or action == "off" then
+        settings.showIcons = (action == "on")
+        IRY:RefreshUI()
+        IRY:Print(action == "on" and IRY.L.CMD_ICONS_ON or IRY.L.CMD_ICONS_OFF)
+        return
+    end
+
+    local osiStatus = IRY.Icons:OsiStatus()
+    local osiLabel = IRY.L.ICON_OSI_MISSING
+    if osiStatus == "ready" then
+        osiLabel = IRY.L.ICON_OSI_READY
+    elseif osiStatus == "custom-off" then
+        osiLabel = IRY.L.ICON_OSI_CUSTOM_OFF
+    end
+
+    IRY:Print(string.format(IRY.L.CMD_ICONS_STATUS,
+        settings.showIcons ~= false and IRY.L.ICONS_ON or IRY.L.ICONS_OFF,
+        tonumber(settings.iconSize2d) or IRY.ICON.default,
+        settings.blacklistIcons ~= false and IRY.L.ICONS_ON or IRY.L.ICONS_OFF,
+        osiLabel))
+end
+
+local function cmdIcon(rest)
+    local idText, argument = rest:match("^(%S+)%s*(.-)$")
+    if not idText then
+        IRY:Print(IRY.L.ICON_USAGE)
+        return
+    end
+
+    local id = resolveId(idText)
+    if not id then
+        IRY:Print(string.format(IRY.L.NOT_FOUND, tostring(idText)))
+        return
+    end
+
+    if argument == "" then
+        local source, path = IRY.Icons:ResolvePlayer(id)
+        IRY:Print(string.format(IRY.L.ICON_CURRENT, id, path or "-", sourceLabel(source)))
+        return
+    end
+
+    if argument:lower() == "clear" then
+        IRY.Icons:Clear(id)
+        IRY:Print(string.format(IRY.L.ICON_CLEARED, id))
+        return
+    end
+
+    local ok, reason = IRY.Icons:Assign(id, argument)
+    if not ok then
+        if reason == "invalid" then
+            IRY:Print(IRY.L.ICON_INVALID)
+        else
+            IRY:Print(string.format(IRY.L.ID_NOT_FOUND, tostring(idText)))
+        end
+        return
+    end
+
+    IRY:Print(string.format(IRY.L.ICON_SET, id, argument))
+end
+
 local function cmdDebug(rest)
     local parts = words(rest)
     local action = parts[1] and parts[1]:lower() or ""
@@ -373,6 +450,16 @@ local function cmdDebug(rest)
             return
         end
         IRY:PrintLines(lines)
+        return
+    end
+
+    if action == "ignore" then
+        local list = IRY.Blacklist:List()
+        if #list == 0 then
+            IRY:Print(IRY.L.DEBUG_IGNORE_EMPTY)
+        else
+            IRY:Print(string.format(IRY.L.DEBUG_IGNORE, #list, table.concat(list, ", ")))
+        end
         return
     end
 
@@ -453,6 +540,12 @@ local function handle(args)
 
     elseif command == "purge" then
         cmdPurge(rest)
+
+    elseif command == "icon" then
+        cmdIcon(rest)
+
+    elseif command == "icons" then
+        cmdIcons(rest)
 
     elseif command == "browse" then
         IRY.Browser:Toggle()

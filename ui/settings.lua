@@ -137,6 +137,43 @@ local function buildOptions()
         checkbox(IRY.L.OPT_AUTO_ACCEPT, IRY.L.OPT_AUTO_ACCEPT_TIP, "autoAcceptProbable"),
         checkbox(IRY.L.OPT_AUTO_MERGE, IRY.L.OPT_AUTO_MERGE_TIP, "autoMergeOnConflict"),
 
+        -- Player icons --------------------------------------------------------
+        {
+            type = "header",
+            name = IRY.L.OPT_SEC_ICONS,
+        },
+        checkbox(IRY.L.OPT_SHOW_ICONS, IRY.L.OPT_SHOW_ICONS_TIP, "showIcons", refresh),
+        {
+            type     = "slider",
+            name     = IRY.L.OPT_ICON_SIZE,
+            tooltip  = IRY.L.OPT_ICON_SIZE_TIP,
+            min      = IRY.ICON.min,
+            max      = IRY.ICON.max,
+            step     = 2,
+            decimals = 0,
+            getFunc  = getter("iconSize2d"),
+            setFunc  = setter("iconSize2d", refresh),
+            default  = IRY.SettingsDefaults.iconSize2d,
+            disabled = function()
+                local settings = current()
+                return settings and settings.showIcons == false
+            end,
+        },
+        checkbox(IRY.L.OPT_BLACKLIST_ICONS, IRY.L.OPT_BLACKLIST_ICONS_TIP, "blacklistIcons", refresh),
+        {
+            type    = "button",
+            name    = IRY.L.OPT_BLACKLIST_ICON,
+            tooltip = IRY.L.OPT_BLACKLIST_ICON_TIP,
+            func    = function()
+                IRY.IconPicker:OpenBlacklist()
+            end,
+            width   = "full",
+        },
+        {
+            type = "description",
+            text = IRY.L.OPT_ICONS_3D,
+        },
+
         -- Maintenance ---------------------------------------------------------
         {
             type = "header",

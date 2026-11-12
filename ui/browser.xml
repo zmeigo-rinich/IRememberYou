@@ -162,8 +162,37 @@
               </OnClicked>
             </Button>
 
+            <!-- Icon block: the texture, its source, and the two actions. It is
+                 fixed height; the scrollable account/character lists start
+                 below it. -->
+            <Texture name="IRY_BrowserDetailIcon" hidden="true">
+              <Anchor point="TOPLEFT" offsetX="10" offsetY="38" />
+              <Dimensions x="64" y="64" />
+            </Texture>
+
+            <Label name="IRY_BrowserDetailIconName" font="ZoFontGameSmall" color="8F8F8F" wrapMode="ELLIPSIS">
+              <Anchor point="TOPLEFT" offsetX="10" offsetY="104" />
+              <Dimensions x="64" y="14" />
+            </Label>
+
+            <Button name="IRY_BrowserDetailIconPick" inherits="ZO_DefaultButton">
+              <Dimensions x="150" y="24" />
+              <Anchor point="TOPLEFT" offsetX="84" offsetY="38" />
+              <OnClicked>
+                IRY.Browser:PickIcon()
+              </OnClicked>
+            </Button>
+
+            <Button name="IRY_BrowserDetailIconClear" inherits="ZO_DefaultButton">
+              <Dimensions x="150" y="24" />
+              <Anchor point="TOPLEFT" offsetX="84" offsetY="66" />
+              <OnClicked>
+                IRY.Browser:ClearIcon()
+              </OnClicked>
+            </Button>
+
             <Control name="IRY_BrowserDetailPanelLines">
-              <Anchor point="TOPLEFT" offsetX="10" offsetY="40" />
+              <Anchor point="TOPLEFT" offsetX="10" offsetY="124" />
               <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-28" />
             </Control>
 
