@@ -10,10 +10,15 @@
     (showIcons) switches every picture off at once.
 
     The 3D part is delegated to OdySupportIcons: group members are pushed
-    through OSI.SetCustomIconForUnit and the reticle target is drawn as one of
-    OSI's position icons. Nothing here renders a texture itself, and nothing is
-    written to OSI's SavedVariables: the temporary values in OSI.special and in
-    OSI's icon cache are snapshotted before a push and restored afterwards.
+    through OSI.SetCustomIconForUnit. Nothing here renders a texture itself, and
+    nothing is written to OSI's SavedVariables: the temporary values in
+    OSI.special and in OSI's icon cache are snapshotted before a push and
+    restored afterwards.
+
+    The target under the reticle deliberately has no 3D icon: ESO withholds the
+    world position of every unit that is not grouped (or a pet), so
+    GetUnitRawWorldPosition("reticleover") answers 0,0,0 and there is nothing to
+    anchor an icon to. The reticle target keeps its 2D icon in the target frame.
 ]]
 
 local Icons = {}
@@ -29,10 +34,6 @@ local OSI_2D = {
 
 local WHITE = { 1, 1, 1 }
 
--- Used only when OSI's own values cannot be read.
-local DEFAULT_RETICLE_SIZE = 64
-local DEFAULT_OFFSET      = 3.0
-
 local cachedPaths
 
 -- Our pushes, keyed by the plain lowercased account:
@@ -43,13 +44,6 @@ local cachedPaths
 --       cache   = OSI cache[raw] before our push,
 --   }
 local pushed = {}
-
--- One position icon slot is enough: only the reticle target is drawn this way.
--- holder.icon is read from OSI's callback on every update.
-local reticle = nil
--- Last CreatePositionIcon error, kept for /pa debug reticle: a silent pcall
--- failure would otherwise look exactly like "nothing is drawn".
-local reticleError = nil
 
 local function settings()
     return (IRY.Store and IRY.Store:GetSettings()) or {}
@@ -304,206 +298,6 @@ function Icons:Clear(playerId)
     return ok, reason
 end
 
--- Reticle target -------------------------------------------------------------
--- OSI.special only works for group members, so the reticle target is drawn as
--- a position icon whose coordinates are refreshed inside OSI's own callback.
-
--- The client does not expose a world position for every unit tag on every API
--- level, so both variants are tried. Returns x, y, z and the source that
--- answered (nil when neither did), which /pa debug reticle reports.
-local function unitWorldPosition(unitTag)
-    local function read(fn)
-        if type(fn) ~= "function" then
-            return nil
-        end
-        local ok, _, x, y, z = pcall(fn, unitTag)
-        -- 0, 0, 0 is not a place in Tamriel: clients use it for "no position"
-        -- on units they do not track, so it must not hide a real answer from
-        -- the other function.
-        if ok and type(x) == "number" and type(y) == "number" and type(z) == "number"
-            and not (x == 0 and y == 0 and z == 0)
-        then
-            return x, y, z
-        end
-        return nil
-    end
-
-    local x, y, z = read(GetUnitRawWorldPosition)
-    if x then
-        return x, y, z, "raw"
-    end
-
-    x, y, z = read(GetUnitWorldPosition)
-    if x then
-        return x, y, z, "world"
-    end
-
-    return nil
-end
-
-local function reticleSize(o)
-    if type(o.GetIconSize) == "function" then
-        local ok, size = pcall(o.GetIconSize)
-        if ok and type(size) == "number" then
-            return size
-        end
-    end
-    return DEFAULT_RETICLE_SIZE
-end
-
-local function reticleOffset(o)
-    local offset = option(o, "offset")
-    if type(offset) == "number" then
-        return offset
-    end
-    return DEFAULT_OFFSET
-end
-
-function Icons:RemoveReticle(o)
-    if reticle and reticle.icon then
-        call(o or osi(), "DiscardPositionIcon", reticle.icon)
-    end
-    reticle = nil
-end
-
-function Icons:ApplyReticle(o, enabled)
-    if not o then
-        return
-    end
-
-    if not enabled or not DoesUnitExist("reticleover") then
-        self:RemoveReticle(o)
-        return
-    end
-
-    local path = self:ForUnit("reticleover")
-    if not path then
-        self:RemoveReticle(o)
-        return
-    end
-
-    if reticle then
-        local icon = reticle.icon
-        local data = icon and icon.data
-        if not data or icon.use == false then
-            -- Discarded behind our back (or a half-built slot): take a new one.
-            self:RemoveReticle(o)
-        else
-            -- OSI reads texture, size, offset and colour from icon.data on every
-            -- update; the control changes only through UpdateIconData.
-            data.size   = reticleSize(o)
-            data.offset = reticleOffset(o)
-            data.color  = WHITE
-            if reticle.path ~= path or reticle.icon.tex ~= path then
-                data.texture = path
-                call(o, "UpdateIconData", reticle.icon, path, WHITE)
-            end
-            reticle.path = path
-            return
-        end
-    end
-
-    if type(o.CreatePositionIcon) ~= "function" then
-        return
-    end
-
-    local holder = {}
-    local ok, icon, err = pcall(o.CreatePositionIcon, 0, 0, 0, path,
-        reticleSize(o), WHITE, reticleOffset(o),
-        function()
-            -- Called by OSI's update loop, so there is no timer of our own.
-            if not holder.icon then
-                return
-            end
-
-            local x, y, z, source = unitWorldPosition("reticleover")
-            if x then
-                holder.icon.x, holder.icon.y, holder.icon.z = x, y, z
-                holder.coords = source
-            end
-        end)
-
-    if not ok or not icon then
-        reticleError = tostring(err)
-        IRY:Debug("reticle icon: " .. tostring(err))
-        return
-    end
-
-    reticleError = nil
-    holder.icon = icon
-    holder.path = path
-    reticle = holder
-end
-
--- Same decision, without the caller having to know whether OSI is loaded.
-function Icons:RefreshReticle()
-    self:ApplyReticle(osi(), settings().showIcons ~= false)
-end
-
--- Everything the 3D reticle path depends on, for /pa debug reticle.
-function Icons:ReticleDebug()
-    local lines = {}
-    local o = _G.OSI
-
-    lines[#lines + 1] = string.format("OSI: %s | show=%s customuse=%s interval=%s",
-        type(o) == "table" and "loaded" or "missing",
-        tostring(type(o) == "table" and o.show or nil),
-        tostring(option(o, "customuse")),
-        tostring(option(o, "interval")))
-
-    local exists = DoesUnitExist("reticleover") and true or false
-    local player = exists and IsUnitPlayer("reticleover") or false
-    lines[#lines + 1] = string.format("unit: exists=%s player=%s name=%s account=%s",
-        tostring(exists), tostring(player),
-        tostring(exists and GetUnitName("reticleover") or nil),
-        tostring(exists and GetUnitDisplayName("reticleover") or nil))
-
-    lines[#lines + 1] = "icon path: " .. tostring(self:ForUnit("reticleover"))
-
-    local x, y, z, source
-    if exists then
-        x, y, z, source = unitWorldPosition("reticleover")
-    end
-    lines[#lines + 1] = string.format("unit position: %s, %s, %s (%s)",
-        tostring(x), tostring(y), tostring(z), tostring(source))
-
-    if reticle then
-        local icon = reticle.icon
-        local data = (icon and icon.data) or {}
-
-        lines[#lines + 1] = string.format(
-            "holder: path=%s coords=%s x/y/z=%s,%s,%s use=%s",
-            tostring(reticle.path), tostring(reticle.coords),
-            tostring(icon and icon.x), tostring(icon and icon.y),
-            tostring(icon and icon.z), tostring(icon and icon.use))
-
-        lines[#lines + 1] = string.format(
-            "data: texture=%s size=%s offset=%s",
-            tostring(data.texture), tostring(data.size), tostring(data.offset))
-
-        local ctrl = icon and icon.ctrl
-        if ctrl then
-            local w, h = ctrl:GetDimensions()
-            lines[#lines + 1] = string.format(
-                "ctrl: hidden=%s alpha=%.2f scale=%.2f size=%.0fx%.0f",
-                tostring(ctrl:IsHidden()), ctrl:GetAlpha(), ctrl:GetScale(),
-                tonumber(w) or 0, tonumber(h) or 0)
-        end
-    else
-        lines[#lines + 1] = "holder: none"
-    end
-
-    if reticleError then
-        lines[#lines + 1] = "create error: " .. reticleError
-    end
-
-    lines[#lines + 1] = string.format("fade: out=%s dist=%s offset=%s alpha=%s",
-        tostring(option(o, "fadeout")), tostring(option(o, "fadedist")),
-        tostring(option(o, "offset")), tostring(option(o, "alpha")))
-
-    return lines
-end
-
 -- Bridge ---------------------------------------------------------------------
 
 function Icons:Apply()
@@ -546,8 +340,6 @@ function Icons:Apply()
             unpushGroupIcon(o, key)
         end
     end
-
-    self:ApplyReticle(o, true)
 end
 
 -- OSI can draw our pushed icon in the friends and guild lists itself. When it
@@ -581,7 +373,6 @@ function Icons:RemoveAll()
     end
 
     pushed = {}
-    self:RemoveReticle(o)
 end
 
 -- "ready" | "custom-off" | "missing", for the settings panel.
@@ -600,19 +391,6 @@ local function scheduleApply()
     zo_callLater(function()
         if IRY.Icons then
             IRY.Icons:Apply()
-        end
-    end, 0)
-end
-
-local function refreshReticle()
-    IRY.Icons:RefreshReticle()
-
-    -- The unit state behind the event can lag by a frame: the target is not
-    -- always resolvable yet when EVENT_RETICLE_TARGET_CHANGED fires. Read it
-    -- again after the client has finished updating the target.
-    zo_callLater(function()
-        if IRY.Icons then
-            IRY.Icons:RefreshReticle()
         end
     end, 0)
 end
@@ -665,22 +443,9 @@ function Icons:Initialize()
         IRY.Icons:Apply()
     end)
     register(namespace, EVENT_UNIT_CHARACTER_NAME_CHANGED, function(_, unitTag)
-        if unitTag == "reticleover" then
-            refreshReticle()
-        elseif unitTag and unitTag:match("^group%d+$") then
+        if unitTag and unitTag:match("^group%d+$") then
             IRY.Icons:Apply()
         end
-    end)
-
-    register(namespace, EVENT_RETICLE_TARGET_CHANGED, refreshReticle)
-    register(namespace, EVENT_RETICLE_TARGET_PLAYER_CHANGED, refreshReticle)
-
-    -- OSI re-reads icon.data on its own tick, but a target that was already
-    -- under the reticle when we loaded, or a size/offset change in OSI's own
-    -- options, would otherwise wait for the next target change. One cheap
-    -- check per second also retries a position icon that failed to create.
-    EVENT_MANAGER:RegisterForUpdate(namespace .. "Reticle", 1000, function()
-        IRY.Icons:RefreshReticle()
     end)
 
     -- The ignore list is the blacklist; a change can add or remove a marker.

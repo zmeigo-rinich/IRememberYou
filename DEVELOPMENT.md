@@ -488,32 +488,26 @@ then applies. Every OSI call is guarded and wrapped in `pcall`.
   `save` is on, `SetCustomIconForUnit` writes our temporary icon into OSI's
   SavedVariables; `UpdateCache(raw, saved)` immediately puts the old value back.
   Removing restores the previous special (or cache) and then the cache.
-* The reticle target cannot use `special` (group only), so it is one
-  `OSI.CreatePositionIcon` whose callback reads the target position **inside
-  OSI's own update loop** and updates `icon.x/y/z`. Texture/size/offset live in
-  `icon.data`; a changed texture is written there and pushed to the control with
-  `UpdateIconData`. `DiscardPositionIcon` is called when the target stops being a
-  player or our icon disappears, because otherwise the slot stays visible.
-  `GetUnitRawWorldPosition("reticleover")` is the primary source;
-  `GetUnitWorldPosition` is tried second, and `0, 0, 0` counts as "no position"
-  rather than a real spot in Tamriel. The event only *starts* the work: the unit
-  behind `EVENT_RETICLE_TARGET_CHANGED` can still be unresolvable for a frame, so
-  a deferred re-read follows, plus a one-second refresh that also picks up a size
-  or offset change in OSI's options. `/pa debug reticle` prints the decision
-  chain: OSI options, unit state, resolved path, both position sources, the
-  control's alpha/scale and the last `CreatePositionIcon` error.
+* There is no 3D icon over the reticle target. ESO withholds world positions of
+  every unit that is not grouped and not a pet:
+  `GetUnitRawWorldPosition("reticleover")` answers `0, 0, 0` and
+  `GetUnitWorldPosition` does the same, so a position icon cannot be anchored
+  anywhere meaningful (it would sit at the world origin, behind the camera or far
+  enough away that OSI's fade-out hides it). This is a ZOS API restriction, not a
+  bug, and it applies to every addon; the reticle target keeps the 2D icon in the
+  target frame, which is UI and works for all players. A `0, 0, 0` answer is
+  treated as "no position" everywhere, so the code never mistakes it for a real
+  spot.
 * `Icons:Apply` is idempotent: it only calls OSI when the path changed or OSI's
   special no longer holds our texture. It also unpushes keys that are no longer
   present in the group, so a member leaving or renaming cannot leave an icon
   behind.
-* `showIcons == false` calls `RemoveAll`: every pushed key is restored and the
-  position icon is discarded. The same happens on `EVENT_IGNORE_*` changes via
-  `IRY:RefreshUI()`, and on login through a deferred `Apply` that runs after
-  OSI's `EVENT_PLAYER_ACTIVATED` handler.
+* `showIcons == false` calls `RemoveAll`: every pushed key is restored. The same
+  happens on `EVENT_IGNORE_*` changes via `IRY:RefreshUI()`, and on login through
+  a deferred `Apply` that runs after OSI's `EVENT_PLAYER_ACTIVATED` handler.
 * Events wired: group join/left/connected/disconnected/account-name-updated,
-  `EVENT_UNIT_CHARACTER_NAME_CHANGED` (only `groupN` and `reticleover`),
-  `EVENT_RETICLE_TARGET_CHANGED`, `EVENT_RETICLE_TARGET_PLAYER_CHANGED`, the two
-  ignore events, `EVENT_ADD_ON_LOADED`, `EVENT_PLAYER_ACTIVATED`.
+  `EVENT_UNIT_CHARACTER_NAME_CHANGED` (only `groupN`), the two ignore events,
+  `EVENT_ADD_ON_LOADED`, `EVENT_PLAYER_ACTIVATED`.
 * Without OSI the 2D surfaces are unaffected; `Icons:OsiStatus()` reports
   `ready`, `custom-off` (OSI's "show custom 3D icons" is disabled) or `missing`.
 
@@ -868,10 +862,11 @@ Before a release, in a live client:
     once the ignore list event fires; a manual icon on the same person wins.
     Toggle `blacklistIcons` and `/pa icons off` — everything hides and comes back.
 22. Icons, 3D: with OdySupportIcons loaded, a group member gets the icon above
-    their head and the reticle target gets it too; assign an OSI icon of its own
-    to a group member first and confirm it comes back after you clear ours.
-    Close the group / leave it — no icon stays behind. Without OSI the 2D
-    surfaces still work and `/pa icons` reports "not loaded".
+    their head; assign an OSI icon of its own to a group member first and confirm
+    it comes back after you clear ours. Close the group / leave it — no icon stays
+    behind. A player under the reticle gets only the 2D icon: ESO does not expose
+    the position of players outside the group, so no 3D icon is possible there.
+    Without OSI the 2D surfaces still work and `/pa icons` reports "not loaded".
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's
@@ -883,8 +878,7 @@ every UI scale, detail-panel anchoring at the screen edges, `FRIENDS_LIST_MANAGE
 `GUILD_ROSTER_MANAGER` `SetupEntry` argument order, localized alliance names,
 and `BringWindowToTop` actually raising the list (it is a C-side control method,
 so it cannot be checked statically). Also unverified: `OSI.special` key shape on
-console, `GetUnitRawWorldPosition("reticleover")` returning coordinates for every
-targetable player, OSI's cache being restored exactly as snapshotted, and
+console, OSI's cache being restored exactly as snapshotted, and
 `GetIgnoredInfo` returning a character name on every client language.
 
 ---

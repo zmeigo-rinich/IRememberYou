@@ -29,18 +29,18 @@ user-visible change.
 - A master switch (`showIcons`, `/pa icons on|off`) that removes every picture
   from every surface at once.
 - 3D icons through **OdySupportIcons**: group members get the icon above their
-  heads, the reticle target is drawn as an OSI position icon. Icons assigned in
-  OSI are snapshotted and restored, and OSI's SavedVariables are never touched.
+  heads. Icons assigned in OSI are snapshotted and restored, and OSI's
+  SavedVariables are never touched.
 - An "Icons" settings section: master switch, UI icon size, ignore-list marking,
   the blacklist icon picker and a short note about the 3D dependency.
 
-### Fixed
+### Notes
 
-- The 3D icon over the reticle target is created after the target settles and
-  refreshed once per second, so a target that was already under the reticle when
-  the addon loaded, or one the client had not resolved yet on the event, still
-  gets its icon. The position falls back to `GetUnitWorldPosition`, and
-  `/pa debug reticle` prints the whole decision chain.
+- There is no 3D icon over players outside the group. ESO does not expose their
+  world position — `GetUnitRawWorldPosition("reticleover")` answers `0, 0, 0` for
+  every unit that is not grouped and not a pet — so nothing can be anchored above
+  them. The reticle target keeps its icon in the target frame, which is drawn in
+  the UI layer and works for every player.
 
 ## [0.3.0] - 2026-11-11
 

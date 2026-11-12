@@ -20,10 +20,11 @@
   потом кеш; порядок аргументов `GetIgnoredInfo` не считается фиксированным.
 * Регистрация событий пропускает константы, которых нет в клиенте, вместо того
   чтобы падать в `Initialize`.
-* Позиция цели под прицелом читается двумя способами
-  (`GetUnitRawWorldPosition`, затем `GetUnitWorldPosition`), иконка создаётся в
-  отложенном обработчике события и обновляется раз в секунду; `/pa debug reticle`
-  печатает состояние этого пути.
+* Единственный путь в 3D — группа через мост OSI. Цели под прицелом 3D-иконки
+  нет и быть не может: ESO не отдаёт позицию не-группового юнита
+  (`GetUnitRawWorldPosition("reticleover")` и `GetUnitWorldPosition` отвечают
+  `0,0,0`), поэтому привязывать позиционную иконку не к чему. В рамке цели
+  остаётся 2D-иконка, она работает для любого игрока.
 * Библиотека поставляется в `icons/base`: 75 файлов 128×128 DXT5 с мип-уровнями
   (1.6 МБ), а не 64×64 из плана — UI всё равно масштабирует, размер в мире задаёт
   OSI. Метка blacklist по умолчанию — `rooster.dds` (`IRY.ICON.blacklistDefault`);
@@ -44,7 +45,7 @@
 | Blacklist | встроенный игровой Ignore list (`GetNumIgnored` / `GetIgnoredInfo` / `IsIgnored`) |
 | Иконка blacklist | отдельная настройка, по умолчанию **включена**; метка по умолчанию — `rooster.dds` |
 | Мастер-тумблер | `showIcons`, выключает **все** картинки, по умолчанию включён |
-| Мир (3D) | рендерит **OSI** через публичный API; своего рендера нет |
+| Мир (3D) | рендерит **OSI** через публичный API, только над группой; своего рендера нет |
 | Чат | не трогаем (если OSI сам рисует — его дело) |
 | Анимации | не поддерживаем (в 2D их нечем показать) |
 | LibCustomIcons | только читаем через OSI, записывать не можем и не будем |
@@ -62,7 +63,7 @@
 правило         IRY.Icons:Effective(id, name)  ->  путь к текстуре | nil
    ↓
 поверхности     2D: target frame, соцсписки, наше окно
-                3D: мост в OSI (группа + reticleover)
+                3D: мост в OSI (только группа)
 ```
 
 Правило одно на все поверхности. Если оно вернуло `nil` — поверхность просто ничего не рисует, без «заглушек».
@@ -142,7 +143,7 @@ function Blacklist:IsIgnored(name)    -- O(1)
 | `core/store.lua` | правка | поле, 3 метода, merge/undo/dump | 45 |
 | `core/blacklist.lua` | **новый** | кеш Ignore list + события | 70 |
 | `core/iconpacks.lua` | **новый** | манифест наборов (пути) | 20 + N |
-| `core/icons.lua` | **новый** | правило, мост OSI, reticle | 230 |
+| `core/icons.lua` | **новый** | правило и мост OSI | 150 |
 | `ui/social.lua` | правка | иконка в 3 списках + подавление дублей | 55 |
 | `ui/targetframe.lua` | правка | иконка в строке имени | 20 |
 | `ui/browser.lua` | правка | строка, блок в панели, пикер | 130 |
@@ -171,7 +172,6 @@ IRY.Icons = Icons
 local osiReady = false
 local pushed   = {}   -- [lowerName] = true          — что записали мы
 local saved    = {}   -- [lowerName] = {texture, color} | false — что было до нас
-local reticleIcon = nil
 ```
 
 **Правило:**
@@ -221,7 +221,6 @@ function Icons:Apply()
             end
         end
     end
-    self:ApplyReticle()
 end
 ```
 
@@ -231,43 +230,16 @@ end
 2. чужую иконку не трогаем, если у нас своей нет;
 3. чужую иконку сохраняем и возвращаем при снятии.
 
-**Reticleover.** `special` работает только для группы, поэтому цель рисуем позиционной иконкой:
-
-```lua
-local RETICLE_SIZE, RETICLE_OFFSET = 64, 2.5
-
-function Icons:ApplyReticle()
-    local o = osi(); if not o then return end
-    local path = DoesUnitExist("reticleover")
-        and self:Effective(IRY.Resolver:ForUnit("reticleover"),
-                           GetUnitDisplayName("reticleover"))
-    if not path then
-        if reticleIcon then o.DiscardPositionIcon(reticleIcon); reticleIcon = nil end
-        return
-    end
-    if not reticleIcon then
-        local holder = {}
-        reticleIcon = o.CreatePositionIcon(0, 0, 0, path, RETICLE_SIZE,
-            { 1, 1, 1 }, RETICLE_OFFSET, function()
-                local zone, x, y, z = GetUnitRawWorldPosition("reticleover")
-                if not zone or not holder.icon then return end
-                holder.icon.x, holder.icon.y, holder.icon.z = x, y, z
-            end)
-        holder.icon = reticleIcon
-    end
-    if reticleIcon.data and reticleIcon.data.texture ~= path then
-        reticleIcon.data.texture = path          -- читается в цикле OSI
-        o.UpdateIconData(reticleIcon, path, { 1, 1, 1 })
-    end
-end
-```
-
-Почему так:
-
-* координаты двигает **сам OSI** в своём цикле через `callback` — своего таймера нет;
-* `icon.data.texture` надо обновлять руками: OSI каждый тик берёт её оттуда, а `UpdateIconData` меняет только контрол;
-* `icon.data.size` / `icon.data.offset` для позиционных иконок OSI уважает (в отличие от групповых);
-* `DiscardPositionIcon` обязателен при выключении — иначе иконка может остаться висеть.
+**Reticleover — почему 3D-иконки нет.** `special` работает только для группы, а
+позиционная иконка требует world-координат, которых клиент для цели под прицелом
+не отдаёт: `GetUnitRawWorldPosition("reticleover")` (и `GetUnitWorldPosition`)
+возвращают `0,0,0` для любого юнита вне группы, кроме питомцев и манекенов. Точка
+`0,0,0` — начало координат мира, то есть иконка оказалась бы за камерой или
+настолько далеко, что затухание OSI её погасило бы: внешне это выглядит как
+«ничего не нарисовалось». API-обхода нет — позиции не-групповых игроков закрыты
+для всех аддонов, поэтому путь `CreatePositionIcon` из плана удалён вместе с
+отладочной командой; цель под прицелом получает 2D-иконку в рамке. Если ZOS
+когда-нибудь откроет позицию, вернуть путь можно по истории git.
 
 **Подавление 2D-дублей.** OSI рисует наш `special` ещё и в друзьях/ростере/чате:
 
@@ -280,9 +252,9 @@ function Icons:OsiHandles2D(surface)
 end
 ```
 
-**События:** `EVENT_GROUP_MEMBER_JOINED`, `EVENT_GROUP_MEMBER_LEFT`, `EVENT_RETICLE_TARGET_CHANGED`, `EVENT_RETICLE_TARGET_PLAYER_CHANGED`, `EVENT_UNIT_CHARACTER_NAME_CHANGED` (игрок переименовался в группе — перепушить под новым ключом), `EVENT_ADD_ON_LOADED`, `EVENT_PLAYER_ACTIVATED`.
+**События:** `EVENT_GROUP_MEMBER_JOINED`, `EVENT_GROUP_MEMBER_LEFT`, `EVENT_GROUP_MEMBER_CONNECTED`, `EVENT_GROUP_MEMBER_DISCONNECTED`, `EVENT_GROUP_MEMBER_ACCOUNT_NAME_UPDATED`, `EVENT_UNIT_CHARACTER_NAME_CHANGED` (игрок переименовался в группе — перепушить под новым ключом), `EVENT_ADD_ON_LOADED`, `EVENT_PLAYER_ACTIVATED`.
 
-**Мастер-тумблер:** `Icons:RemoveAll()` → снять всё, что в `pushed`, вернуть `saved`, погасить reticle.
+**Мастер-тумблер:** `Icons:RemoveAll()` → снять всё, что в `pushed`, и вернуть `saved`.
 
 ### 5.2 `core/iconpacks.lua` — манифест
 
@@ -471,9 +443,9 @@ CMD_ICONS_ON, CMD_ICONS_OFF,
 
 ### Этап 4 — мир (мост OSI)
 
-`icons.lua`: детект OSI, `Apply`, reticle, подавление 2D, `RemoveAll`.
+`icons.lua`: детект OSI, `Apply`, подавление 2D, `RemoveAll`.
 
-**DoD:** в группе иконка над головой появляется в пределах секунды; пропадает при выходе из группы; иконка над целью под ретиклом; при снятии вручную возвращается прежняя иконка OSI; при выключенном мастере не остаётся ничего; без OSI всё работает в 2D.
+**DoD:** в группе иконка над головой появляется в пределах секунды; пропадает при выходе из группы; у цели вне группы есть 2D-иконка в рамке, а 3D там не делается по ограничению API; при снятии вручную возвращается прежняя иконка OSI; при выключенном мастере не остаётся ничего; без OSI всё работает в 2D.
 
 ### Этап 5 — настройки, язык, документация, релиз
 
@@ -501,14 +473,14 @@ CMD_ICONS_ON, CMD_ICONS_OFF,
 
 ## 8. Чек-лист живой проверки
 
-1. `/script local z,x,y,zz = GetUnitRawWorldPosition("reticleover") d(z and "ok" or "nil")` — до начала этапа 4.
+1. `/script local z,x,y,zz = GetUnitRawWorldPosition("reticleover") d(z and "ok" or "nil")` — проверено: для цели вне группы приходит `0,0,0`, поэтому 3D над прицелом не делаем.
 2. Иконка над членом группы: появляется, двигается с ним, масштабируется.
-3. Иконка над целью: появляется при наведении, исчезает при уходе, не мигает при быстрой смене цели.
+3. Цель вне группы: 2D-иконка в рамке есть, 3D-иконки нет — так и должно быть (ограничение API).
 4. OSI включён/выключен, `customuse` вкл/выкл, `fluse`/`gruse` вкл/выкл.
 5. Игрок с иконкой в LibCustomIcons: проверить, кто побеждает (`hodorprio` off/on).
 6. Merged-игрок: иконка не «переезжает» к чужой записи.
 7. UI-масштаб 100% / 150%, 4K: размеры в списках не разъезжаются.
-8. BG/инстанс/другая зона: позиционные иконки не висят в пустоте.
+8. BG/инстанс/другая зона: иконки группы не висят в пустоте.
 9. `/reloadui` в группе: иконки восстанавливаются.
 10. Удаление OSI из AddOns: аддон грузится, 2D работает, в чат/настройки выводится предупреждение, ошибок в `EO_LuaError` нет.
 
@@ -532,7 +504,7 @@ CMD_ICONS_ON, CMD_ICONS_OFF,
 
 | Риск | Как снижаем |
 |---|---|
-| `GetUnitRawWorldPosition("reticleover")` не работает | проверка до этапа 4; при провале остаётся только группа |
+| `GetUnitRawWorldPosition("reticleover")` не работает | подтверждено: для не-групповых юнитов `0,0,0`; 3D над целью не делаем, остаётся 2D в рамке |
 | OSI переименует методы | все вызовы через `pcall`, фича молча отключается, 2D живёт |
 | OSI сохранит наши иконки в свой SV | сохраняем/возвращаем чужое, при выключении снимаем всё своё |
 | Двойные иконки в списках | `OsiHandles2D` перед отрисовкой |

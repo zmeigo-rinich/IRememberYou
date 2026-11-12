@@ -3,7 +3,7 @@
 ## Version: 0.4.0
 ## AddOnVersion: 400
 ## SavedVariables: IRememberYouSV
-## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, adds a resizable browsable player list, and gives each player one icon on every surface, including 3D icons through OdySupportIcons.
+## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, adds a resizable browsable player list, and gives each player one icon on every surface, including 3D icons above group members through OdySupportIcons.
 ## Author: I remember you! contributors
 ## OptionalDependsOn: LibAddonMenu-2.0
 

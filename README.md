@@ -24,7 +24,7 @@ Everything it prints is local to your client.
 * **Player icons** — one icon per player, chosen from a library shipped with the
   addon, on the target frame, in the friends list, guild roster, ignore list and
   player browser. With **OdySupportIcons** installed the same icon also floats
-  above group members and the reticle target. Entries on the game's ignore list
+  above group members. Entries on the game's ignore list
   can get a marker icon automatically (a rooster by default); a manually assigned
   icon always wins.
 * **Chat** — player links get a suffix: `@NewName (OldName)`. The link itself is
@@ -197,9 +197,10 @@ delete anything by itself.
 * icons are assigned manually from the detail panel or `/pa icon`, and the
   whole set can be switched off with `/pa icons off` or the settings;
 * entries on the game's ignore list can be marked with a dedicated icon;
-* 3D icons above group members and the reticle target through
-  **OdySupportIcons**, including its own settings and saved icons being
-  preserved.
+* 3D icons above group members through **OdySupportIcons**, including its own
+  settings and saved icons being preserved. Players outside the group get their
+  icon in the UI only: ESO does not expose their world position, so no addon can
+  draw a 3D icon over them.
 
 **0.3.0**
 * the player list is resizable; the number of rows follows the window height;

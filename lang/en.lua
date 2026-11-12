@@ -32,7 +32,6 @@ IRY.L = {
         "  /pa debug conflict       simulate the A/B  ->  C/D  ->  C/B case",
         "  /pa debug dump <id>      dump the raw entity",
         "  /pa debug ignore         dump the cached ignore list",
-        "  /pa debug reticle        dump the 3D reticle icon state",
         "  /pa debug wipe confirm   erase the whole database",
     },
 
@@ -212,7 +211,7 @@ IRY.L = {
     OPT_BLACKLIST_ICONS_TIP = "Gives every character on the game's Ignore list the marker icon. A manually assigned icon always wins.",
     OPT_BLACKLIST_ICON = "Choose the blacklist icon",
     OPT_BLACKLIST_ICON_TIP = "The icon used for ignored players. Until you pick one, the shipped rooster icon is used.",
-    OPT_ICONS_3D    = "The 3D icons above group members and the reticle target are drawn by OdySupportIcons. The 2D icons keep working without it.",
+    OPT_ICONS_3D    = "The 3D icons above group members are drawn by OdySupportIcons. The 2D icons keep working without it, and the target frame always keeps its 2D icon: ESO does not expose the position of players outside your group, so their 3D icon is not possible.",
 
     OPT_SEC_MAINT   = "Maintenance",
     OPT_PURGE_DAYS  = "Forget players after, days",
