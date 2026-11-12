@@ -22,7 +22,8 @@ Everything it prints is local to your client.
   target marker stay where they were. The line under the name is rebuilt as
   `character name + title`.
 * **Player icons** — one icon per player, chosen from a library shipped with the
-  addon, on the target frame, in the friends list, guild roster, ignore list and
+  addon (a curated set plus a lore-friendly pack that reuses ESO's own UI art),
+  on the target frame, in the friends list, guild roster, ignore list and
   player browser. With **OdySupportIcons** installed the same icon also floats
   above group members. Entries on the game's ignore list
   can get a marker icon automatically (a rooster by default); a manually assigned
@@ -178,8 +179,10 @@ delete anything by itself.
   column with the account: a long one is shortened with an ellipsis. Nothing is
   resized, so the location column never shifts.
 * 3D icons need **OdySupportIcons**; without it every 2D surface still works.
-  The icon library ships with the addon: 75 icons in `icons/base`, listed in
-  `core/iconpacks.lua` and chosen in the detail panel or with `/pa icon`.
+  The icon library ships with the addon: 75 icons in `icons/base`, plus a
+  lore-friendly pack of 82 textures that ESO already ships in its own UI art.
+  Both are listed in `core/iconpacks.lua` and chosen in the detail panel or
+  with `/pa icon`; the picker pages through them.
 * The marker above the reticle is a screen-space overlay, not a 3D icon: it does
   not follow the distance to the target. A close target appears as a picture at
   chest height, a distant one as a picture above the head. Drag it to the spot

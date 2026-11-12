@@ -451,10 +451,15 @@ to the blacklist (`GetUnitName`) and the entity id to the manual lookup;
 
 **Library.** ESO cannot enumerate files, so `core/iconpacks.lua` is a hand
 written manifest `{ { id, title, icons = { path, ... } }, ... }`. `AllPaths`
-flattens and de-duplicates it and drops anything that fails `IRY.IsIconPath`
-(`IRememberYou/icons/<pack>/<name>.dds`, lowercase, no spaces). A bad path would
-render nothing silently, hence the check. The own library is deliberate: OSI's
-folder is not part of our release and may move.
+flattens and de-duplicates it and drops anything that fails `IRY.IsIconPath`.
+Two namespaces are accepted: `IRememberYou/icons/<pack>/<name>.dds` for the DDS
+files we ship and `esoui/art/<...>/<name>.dds` for textures the game already
+has. Both must be lowercase, without spaces or `..`, and end in `.dds`. A bad
+path would render nothing silently, hence the check. The own library is
+deliberate: OSI's folder is not part of our release and may move. The `lore`
+pack is the second namespace: 82 textures from the game's own UI art (the same
+list LoreFriendlySupportIcons registers with OSI), so it costs no download
+space and cannot break when another addon is removed.
 
 **Assigning.** `player.icon` is the single write target; `Store:SetIcon` and
 `Store:ClearIcon` validate the path, and both clear `iconFrom`. During a merge

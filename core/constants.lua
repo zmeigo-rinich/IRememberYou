@@ -53,6 +53,9 @@ IRY.MSG_PREFIX = "|c7FBF7F[" .. ADDON_TITLE .. "]|r "
 -- One curated library, shipped inside the addon. The game cannot enumerate
 -- files, so every available texture is listed by hand in core/iconpacks.lua.
 IRY.ICON_FOLDER = "IRememberYou/icons/"
+-- ESO's own art, used by the lore pack: those DDS files ship with the game, so
+-- they cost nothing in the download and never go missing with an addon update.
+IRY.ESOUI_FOLDER = "esoui/art/"
 
 IRY.ICON = {
     min       = 16,
@@ -84,24 +87,40 @@ IRY.ICON_SOURCE = {
 }
 
 -- ESO silently renders nothing for a missing texture, so the only cheap guard
--- is refusing obviously wrong paths. The shape is
---   IRememberYou/icons/<pack>/<name>.dds
--- lowercase, no spaces, exactly one folder below icons/.
+-- is refusing obviously wrong paths. Two shapes are accepted:
+--   IRememberYou/icons/<pack>/<name>.dds   -- files shipped in this addon
+--   esoui/art/<anything>/<name>.dds        -- the game's own art (lore pack)
+-- Both must be lowercase, contain no spaces or "..", and end in .dds.
 function IRY.IsIconPath(path)
-    if type(path) ~= "string" then
+    if type(path) ~= "string" or path == "" then
         return false
     end
 
-    if path:sub(1, #IRY.ICON_FOLDER) ~= IRY.ICON_FOLDER then
+    if path:find("%s") or path:find("%.%.") then
         return false
     end
 
-    local rest = path:sub(#IRY.ICON_FOLDER + 1)
-    if rest == "" or rest ~= rest:lower() or rest:find("%s") or rest:find("%.%.") then
-        return false
+    local rest
+    if path:sub(1, #IRY.ICON_FOLDER) == IRY.ICON_FOLDER then
+        rest = path:sub(#IRY.ICON_FOLDER + 1)
+        if rest ~= rest:lower() then
+            return false
+        end
+        return rest:match("^[%w_%-]+/[%w_%-]+%.dds$") ~= nil
     end
 
-    return rest:match("^[%w_%-]+/[%w_%-]+%.dds$") ~= nil
+    if path:sub(1, #IRY.ESOUI_FOLDER) == IRY.ESOUI_FOLDER then
+        rest = path:sub(#IRY.ESOUI_FOLDER + 1)
+        if rest ~= rest:lower() then
+            return false
+        end
+        if rest:find("^/") or rest:find("/$") or rest:find("//") then
+            return false
+        end
+        return rest:find("/") ~= nil and rest:match("^[%w_%-/]+%.dds$") ~= nil
+    end
+
+    return false
 end
 
 -- Read-only defaults. Never hand the same table to ZO_SavedVars twice,

@@ -19,6 +19,10 @@ user-visible change.
   addon (75 icons in `icons/base`). The same texture appears in the reticle
   target frame, the friends list, the guild roster, the ignore list and the
   player browser.
+- A lore-friendly pack of 82 icons taken from ESO's own UI art (compass pins,
+  alliance and guild rank symbols, zone completion and Armory badges). The game
+  already ships these textures, so they add nothing to the download; the picker
+  pages through both packs.
 - A manual assignment flow: the browser detail panel shows the current icon and
   opens an 8 x 5 picker; `/pa icon <id> [path|clear]` does the same from chat.
   The chosen icon survives merges and is removed with the merge when undone.

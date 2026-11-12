@@ -16,8 +16,13 @@
             },
         }
 
-    Every path must be lowercase, under IRememberYou/icons/<pack>/, and a .dds
-    file. The default marker for ignored players is IRY.ICON.blacklistDefault
+    Every path must be lowercase, end in .dds, and be either under
+    IRememberYou/icons/<pack>/ (a file we ship) or under esoui/art/ (art the
+    game itself ships). The `lore` pack uses the second form, so it adds no DDS
+    files to the download; it is the same list the LoreFriendlySupportIcons
+    addon registers with OSI.
+
+    The default marker for ignored players is IRY.ICON.blacklistDefault
     (rooster.dds), so that file must stay listed; an explicit choice in the
     settings always wins over it.
 
@@ -109,6 +114,97 @@ IRY.IconPacks = {
             "IRememberYou/icons/base/trollface.dds",
             "IRememberYou/icons/base/wolf.dds",
             "IRememberYou/icons/base/yoga.dds",
+        },
+    },
+    {
+        -- Textures from the game's own UI art. They are always installed and
+        -- are the list LoreFriendlySupportIcons hands to OSI, reused here so
+        -- the picker offers the same lore-friendly set without shipping DDS.
+        id    = "lore",
+        title = "Lore-friendly",
+        icons = {
+            "esoui/art/compass/ava_borderkeep_pin_aldmeri.dds",
+            "esoui/art/compass/ava_borderkeep_pin_daggerfall.dds",
+            "esoui/art/compass/ava_borderkeep_pin_ebonheart.dds",
+            "esoui/art/compass/ava_farm_aldmeri.dds",
+            "esoui/art/compass/ava_farm_daggerfall.dds",
+            "esoui/art/compass/ava_farm_ebonheart.dds",
+            "esoui/art/compass/ava_farm_neutral.dds",
+            "esoui/art/compass/ava_flagcarrier_aldmeri.dds",
+            "esoui/art/compass/ava_flagcarrier_daggerfall.dds",
+            "esoui/art/compass/ava_flagcarrier_ebonheart.dds",
+            "esoui/art/compass/ava_flagcarrier_neutral.dds",
+            "esoui/art/compass/ava_murderball_aldmeri.dds",
+            "esoui/art/compass/ava_murderball_daggerfall.dds",
+            "esoui/art/compass/ava_murderball_ebonheart.dds",
+            "esoui/art/compass/ava_murderball_neutral.dds",
+            "esoui/art/compass/ava_returnpoint_aldmeri.dds",
+            "esoui/art/compass/ava_returnpoint_daggerfall.dds",
+            "esoui/art/compass/ava_returnpoint_ebonheart.dds",
+            "esoui/art/compass/ava_returnpoint_neutral.dds",
+            "esoui/art/armory/buildicons/buildicon_5.dds",
+            "esoui/art/armory/buildicons/buildicon_7.dds",
+            "esoui/art/armory/buildicons/buildicon_11.dds",
+            "esoui/art/armory/buildicons/buildicon_12.dds",
+            "esoui/art/armory/buildicons/buildicon_13.dds",
+            "esoui/art/armory/buildicons/buildicon_15.dds",
+            "esoui/art/armory/buildicons/buildicon_16.dds",
+            "esoui/art/armory/buildicons/buildicon_19.dds",
+            "esoui/art/armory/buildicons/buildicon_22.dds",
+            "esoui/art/armory/buildicons/buildicon_23.dds",
+            "esoui/art/armory/buildicons/buildicon_27.dds",
+            "esoui/art/armory/buildicons/buildicon_28.dds",
+            "esoui/art/armory/buildicons/buildicon_32.dds",
+            "esoui/art/armory/buildicons/buildicon_36.dds",
+            "esoui/art/armory/buildicons/buildicon_44.dds",
+            "esoui/art/armory/buildicons/buildicon_45.dds",
+            "esoui/art/armory/buildicons/buildicon_46.dds",
+            "esoui/art/armory/buildicons/buildicon_51.dds",
+            "esoui/art/armory/buildicons/buildicon_52.dds",
+            "esoui/art/armory/buildicons/buildicon_54.dds",
+            "esoui/art/armory/buildicons/buildicon_56.dds",
+            "esoui/art/armory/buildicons/buildicon_57.dds",
+            "esoui/art/armory/buildicons/buildicon_60.dds",
+            "esoui/art/armory/buildicons/buildicon_63.dds",
+            "esoui/art/armory/buildicons/buildicon_69.dds",
+            "esoui/art/armory/buildicons/buildicon_72.dds",
+            "esoui/art/armory/buildicons/buildicon_75.dds",
+            "esoui/art/compass/compass_bg_returnpoint_green.dds",
+            "esoui/art/compass/compass_bg_returnpoint_orange.dds",
+            "esoui/art/compass/compass_bg_returnpoint_purple.dds",
+            "esoui/art/compass/compass_cartoklept.dds",
+            "esoui/art/compass/compass_cartoklept_damaged.dds",
+            "esoui/art/compass/compass_dragon.dds",
+            "esoui/art/compass/compass_dragon_damaged.dds",
+            "esoui/art/zonestories/completiontypeicon_groupboss.dds",
+            "esoui/art/zonestories/completiontypeicon_lorebooks.dds",
+            "esoui/art/zonestories/completiontypeicon_mundusstone.dds",
+            "esoui/art/zonestories/completiontypeicon_skyshard.dds",
+            "esoui/art/market/gamepad/gp_esoplus_chalice_gold_64.dds",
+            "esoui/art/market/gamepad/gp_esoplus_chalice_white_64.dds",
+            "esoui/art/inventory/gamepad/gp_inventory_icon_apparel.dds",
+            "esoui/art/inventory/gamepad/gp_inventory_icon_consumables.dds",
+            "esoui/art/inventory/gamepad/gp_inventory_icon_craftbag_all.dds",
+            "esoui/art/inventory/gamepad/gp_inventory_icon_quickslot.dds",
+            "esoui/art/inventory/gamepad/gp_inventory_trait_retrait_icon.dds",
+            "esoui/art/leaderboards/gamepad/gp_leaderboards_menuicon_aldmeri.dds",
+            "esoui/art/leaderboards/gamepad/gp_leaderboards_menuicon_daggerfall.dds",
+            "esoui/art/leaderboards/gamepad/gp_leaderboards_menuicon_ebonheart.dds",
+            "esoui/art/leaderboards/gamepad/gp_leaderboards_menuicon_overall.dds",
+            "esoui/art/campaign/gamepad/gp_overview_menuicon_emperor.dds",
+            "esoui/art/contacts/gamepad/gp_social_status_afk.dds",
+            "esoui/art/contacts/gamepad/gp_social_status_dnd.dds",
+            "esoui/art/contacts/gamepad/gp_social_status_online.dds",
+            "esoui/art/champion/champion_points_health_icon-hud.dds",
+            "esoui/art/champion/champion_points_magicka_icon-hud.dds",
+            "esoui/art/champion/champion_points_stamina_icon-hud.dds",
+            "esoui/art/icons/mapkey/mapkey_stables.dds",
+            "esoui/art/icons/poi/poi_u26_nord_boat_pattern_complete.dds",
+            "esoui/art/icons/guildranks/guild_indexicon_leader_up.dds",
+            "esoui/art/icons/guildranks/guild_indexicon_member_up.dds",
+            "esoui/art/icons/guildranks/guild_indexicon_misc01_up.dds",
+            "esoui/art/icons/guildranks/guild_indexicon_officer_up.dds",
+            "esoui/art/icons/guildranks/guild_indexicon_recruit_up.dds",
         },
     },
 }
