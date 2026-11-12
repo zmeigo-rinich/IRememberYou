@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+env:
+  # 0.4.0 is published as a beta. The release is created as a GitHub
+  # pre-release and the title gets a "beta" suffix. Set to "false" when the
+  # version is bumped for the final release.
+  RELEASE_PRERELEASE: "true"
+
 concurrency:
   group: release
   cancel-in-progress: false
@@ -100,8 +106,16 @@ jobs:
           set -e
           version="${{ steps.version.outputs.version }}"
           tag="${{ steps.version.outputs.tag }}"
+          prerelease_flag=""
+          title_suffix=""
+          if [ "$RELEASE_PRERELEASE" = "true" ]; then
+            prerelease_flag="--prerelease"
+            title_suffix=" beta"
+          fi
           cat > notes.md <<EOF
-          ## IRememberYou ${version}
+          ## IRememberYou ${version}${title_suffix}
+
+          > **Beta / Бета:** предварительная сборка для тестирования. Замечания будут исправлены в следующем релизе.
 
           Аддон для The Elder Scrolls Online, который помнит игроков после смены @аккаунта и имени персонажа.
 
@@ -112,5 +126,6 @@ jobs:
           Полная инструкция / full guide: [README.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.md) · [README.ru.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.ru.md) · [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)
           EOF
           gh release create "$tag" "IRememberYou_v${version}.zip" \
-            --title "IRememberYou ${version}" \
+            --title "IRememberYou ${version}${title_suffix}" \
+            $prerelease_flag \
             --notes-file notes.md
