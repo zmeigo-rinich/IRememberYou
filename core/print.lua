@@ -45,6 +45,12 @@ function IRY:RefreshUI()
         IRY.Icons:Apply()
     end
 
+    -- The map reads the same resolved icons, so refresh it after the 3D bridge
+    -- has applied its state. Refresh also restores pins when an icon is cleared.
+    if IRY.WorldMap then
+        IRY.WorldMap:Refresh()
+    end
+
     if IRY.Browser then
         IRY.Browser:RefreshIfShown()
     end

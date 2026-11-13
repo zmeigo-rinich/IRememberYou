@@ -1,15 +1,20 @@
 --[[
-    I remember you! -- remembered names in the friends list and guild roster.
+    I remember you! -- remembered names in the friends list, guild roster and
+    the Group Finder's group list.
 
     The game draws these rows itself, so this is display only: after the row has
-    been set up, the remembered name is appended to the account label. The
-    account name stays where it is; nothing is replaced.
+    been set up, the remembered name is appended to the name label. The name the
+    game shows stays where it is; nothing is replaced.
 
-    Nothing is resized. In both lists the Zone label follows the right end of
-    DisplayName, so widening the name dragged the location column to the right,
-    and shrinking Zone then clipped the location text. The suffix is therefore
-    fitted into the width the label already has and shortened when it does not
-    fit.
+    Friends, guild and ignore rows show an account label (ignore rows a
+    character). The group list shows a numbered character name, so only the
+    suffix is added there: the group index and the icon column stay untouched.
+
+    Nothing is resized. In the social lists the Zone label follows the right end
+    of DisplayName, so widening the name dragged the location column to the
+    right, and shrinking Zone then clipped the location text. The suffix is
+    therefore fitted into the width the label already has and shortened when it
+    does not fit.
 
     The rows are recycled, and SetupEntry rewrites the label on every refresh,
     so decorating a row is idempotent: read the fresh text, append once.
@@ -89,7 +94,7 @@ local function utf8Prefix(text, count)
 end
 
 -- Remembered name for a social row, or nil when there is nothing new to show.
-function Social:SuffixFor(data)
+function Social:SuffixFor(data, surface)
     if not settings().annotateSocial or not data then
         return nil
     end
@@ -104,7 +109,12 @@ function Social:SuffixFor(data)
         return nil
     end
 
-    return IRY.Chat:SocialSuffix(account, character, data.displayName)
+    -- Friends and guild rows show the account; the group list shows the
+    -- character name (with a group index in front). Compare the remembered name
+    -- against what is actually shown, otherwise a known character would be
+    -- annotated even when the row already has the real name.
+    local shownName = surface == "group" and data.characterName or data.displayName
+    return IRY.Chat:SocialSuffix(account, character, shownName)
 end
 
 -- Append `suffix` (" (Name)") to the label without touching its width. The
@@ -213,6 +223,30 @@ function Social:DecorateRow(control, data, surface)
         return
     end
 
+    -- The group list has no account label: the row already shows the character
+    -- name with its group index. Only the suffix is ours; the row keeps its
+    -- own icon column (OSI draws group icons in leaderIcon).
+    if surface == "group" then
+        -- The row names the label "CharacterName"; the game itself exposes it
+        -- as control.characterNameLabel. GetNamedChild("characterNameLabel")
+        -- would be nil here.
+        local label = control.characterNameLabel or control:GetNamedChild("CharacterName")
+        if not label then
+            return
+        end
+
+        local raw = label:GetText() or ""
+        if raw:find(SUFFIX_MARK, 1, true) then
+            return
+        end
+
+        local suffix = self:SuffixFor(data, surface)
+        if suffix then
+            self:AppendSuffix(label, raw, suffix)
+        end
+        return
+    end
+
     local label = control:GetNamedChild("DisplayName")
     if not label then
         return
@@ -247,7 +281,7 @@ function Social:DecorateRow(control, data, surface)
         label:SetText(rest)
     end
 
-    local suffix = self:SuffixFor(data)
+    local suffix = self:SuffixFor(data, surface)
     if not suffix then
         if path then
             label:SetText(base)
@@ -258,26 +292,29 @@ function Social:DecorateRow(control, data, surface)
     self:AppendSuffix(label, base, suffix)
 end
 
-local function hookManager(manager, surface)
+local function hookManager(manager, method, surface)
     if not manager or not ZO_PostHook then
         return false
     end
 
-    ZO_PostHook(manager, "SetupEntry", function(_, control, data)
+    local original = ZO_PostHook(manager, method, function(_, control, data)
         IRY.Social:DecorateRow(control, data, surface)
     end)
-    return true
+    return original ~= nil
 end
 
 function Social:Install()
     if not self.friendsHooked then
-        self.friendsHooked = hookManager(FRIENDS_LIST_MANAGER, "friends")
+        self.friendsHooked = hookManager(FRIENDS_LIST_MANAGER, "SetupEntry", "friends")
     end
     if not self.guildHooked then
-        self.guildHooked = hookManager(GUILD_ROSTER_MANAGER, "guild")
+        self.guildHooked = hookManager(GUILD_ROSTER_MANAGER, "SetupEntry", "guild")
     end
     if not self.ignoreHooked then
-        self.ignoreHooked = hookManager(IGNORE_LIST_MANAGER, "ignore")
+        self.ignoreHooked = hookManager(IGNORE_LIST_MANAGER, "SetupEntry", "ignore")
+    end
+    if not self.groupHooked then
+        self.groupHooked = hookManager(GROUP_LIST, "SetupGroupEntry", "group")
     end
 end
 
@@ -285,7 +322,8 @@ function Social:Initialize()
     self:Install()
 
     -- The social managers are part of the base UI, but re-check after login so
-    -- an addon that replaces them late is still covered.
+    -- an addon that replaces them late, or a group list created after addon
+    -- load, is still covered.
     EVENT_MANAGER:RegisterForEvent(IRY.name, EVENT_PLAYER_ACTIVATED, function()
         IRY.Social:Install()
     end)

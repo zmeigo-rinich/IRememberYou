@@ -53,6 +53,13 @@ local function markerDisabled()
         or settings.reticleMarker ~= true
 end
 
+-- The map option only follows the master switch; it is independent of the
+-- reticle marker.
+local function mapDisabled()
+    local settings = current()
+    return not settings or settings.showIcons == false
+end
+
 local function applyPoller()
     if IRY.Poller then
         IRY.Poller:Apply()
@@ -170,6 +177,7 @@ local function buildOptions()
                 return settings and settings.showIcons == false
             end,
         },
+        checkbox(IRY.L.OPT_MAP_ICONS, IRY.L.OPT_MAP_ICONS_TIP, "mapIcons", refresh, mapDisabled),
         checkbox(IRY.L.OPT_RETICLE_MARKER, IRY.L.OPT_RETICLE_MARKER_TIP,
             "reticleMarker", refresh, function()
                 local settings = current()

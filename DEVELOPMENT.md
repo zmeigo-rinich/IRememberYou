@@ -54,14 +54,15 @@ and strings first, the UI XML before the Lua that uses it, the bootstrap last.
 | 15 | `ui/targetframe.lua` | post-hooks on the reticle frame |
 | 16 | `ui/chat.lua` | player-link and kill-feed wrappers |
 | 17 | `ui/reticlemarker.lua` | optional screen-space marker above the crosshair |
-| 18 | `ui/social.lua` | friends, guild and ignore list row decoration |
-| 19 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
-| 20 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
-| 21 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
-| 22 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
-| 23 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
-| 24 | `ui/commands.lua` | `/pa` and `/iry` |
-| 25 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
+| 18 | `ui/worldmap.lua` | IRY icons on group pins of the world map and minimaps |
+| 19 | `ui/social.lua` | friends, guild, ignore and group list row decoration |
+| 20 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
+| 21 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
+| 22 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
+| 23 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
+| 24 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
+| 25 | `ui/commands.lua` | `/pa` and `/iry` |
+| 26 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
 
 The manifest also declares `## OptionalDependsOn: LibAddonMenu-2.0`, so LAM is
 guaranteed to be loaded before `ui/settings.lua` runs when it is installed.
@@ -83,7 +84,9 @@ EVENT_ADD_ON_LOADED (addon name matches)
   IRY.Poller:Initialize()           -- timer + reset events
   IRY.TargetFrame:Initialize()      -- ZO_PostHook
   IRY.Chat:Initialize()             -- link + kill feed wrappers
-  IRY.Social:Initialize()           -- friends/guild/ignore row hooks
+  IRY.ReticleMarker:Initialize()    -- screen-space marker
+  IRY.WorldMap:Initialize()         -- group pin hook for map and minimaps
+  IRY.Social:Initialize()           -- friends/guild/ignore/group row hooks
   IRY.IconPicker:Initialize()       -- picker window and tiles
   IRY.Browser:Initialize()          -- build rows, register top level
   IRY.Settings:Initialize()         -- LAM panel (may be a no-op)
@@ -382,22 +385,32 @@ replace the entry (`pChat` is the usual suspect). `CHAT_ROUTER.RegisterMessageFo
 is also wrapped: any later registration for this event, including pChat's, is
 wrapped again immediately instead of waiting for the next login.
 
-### 7.4 Friends list, guild roster and ignore list (`ui/social.lua`)
+### 7.4 Friends list, guild roster, ignore list and group list (`ui/social.lua`)
 
-These rows are drawn by the game, so this is display only. Three `ZO_PostHook`s —
-`FRIENDS_LIST_MANAGER:SetupEntry`, `GUILD_ROSTER_MANAGER:SetupEntry` and
-`IGNORE_LIST_MANAGER:SetupEntry` — append ` |c8F8F8F (Name)|r` to the
-`DisplayName` label. The real account name stays in front and in the sort key;
-nothing is replaced. Ignore rows carry only a character name, so manual icons
-fall back to a character lookup and the blacklist is asked about that same name.
+These rows are drawn by the game, so this is display only. Four `ZO_PostHook`s —
+`FRIENDS_LIST_MANAGER:SetupEntry`, `GUILD_ROSTER_MANAGER:SetupEntry`,
+`IGNORE_LIST_MANAGER:SetupEntry` and `GROUP_LIST:SetupGroupEntry` — append
+` |c8F8F8F (Name)|r` to the row's name label. The game's own name stays in front
+and in the sort key; nothing is replaced. Friends and guild rows use
+`DisplayName`; the group list uses `characterNameLabel`, which already carries
+the group index (`1. Name`). Ignore rows carry only a character name, so manual
+icons fall back to a character lookup and the blacklist is asked about that same
+name.
 
-* The hook body reads the freshly set text and appends once. `SetupEntry`
-  rewrites the label on every refresh, so no reset is needed; the colour marker
-  guards against a double install.
-* Nothing is resized. In both lists the `Zone` label is anchored to the right
-  end of `DisplayName`, so widening the name pushed the location column to the
-  right, and shrinking `Zone` afterwards clipped the location text: that is why
-  the columns drifted between rows. `AppendSuffix` instead measures
+* The group list gets the suffix only: the row keeps its index and its own icon
+  column (`leaderIcon`, where OSI also draws), so no inline `|t...|t` icon is
+  inserted there. That icon is OSI's, not ours: without OdySupportIcons the row
+  still gets the suffix but no player icon.
+* The group list shows a character name, not an account. `SuffixFor` therefore
+  compares the remembered name with `data.characterName` (the name without the
+  index prefix), while the account lookup still uses `data.displayName`.
+* The hook body reads the freshly set text and appends once. `SetupEntry` and
+  `SetupGroupEntry` rewrite the label on every refresh, so no reset is needed;
+  the colour marker guards against a double install.
+* Nothing is resized. In the social lists the `Zone` label is anchored to the
+  right end of `DisplayName`, so widening the name pushed the location column to
+  the right, and shrinking `Zone` afterwards clipped the location text: that is
+  why the columns drifted between rows. `AppendSuffix` instead measures
   `DisplayName:GetTextWidth()` against the label's own width. The whole
   `" (Name)"` suffix is used when it fits; otherwise only the remembered name is
   shortened, character by character (`utf8Prefix` never splits a UTF-8
@@ -407,7 +420,8 @@ fall back to a character lookup and the blacklist is asked about that same name.
   suffix is appended as is and the game ellipsizes the label itself.
 * Keyboard UI only: `IsInGamepadPreferredMode()` skips the console layout.
 * Hooks are installed once and re-checked on `EVENT_PLAYER_ACTIVATED` so a late
-  replacement by another addon is still covered.
+  replacement by another addon, or a `GROUP_LIST` created after addon load, is
+  still covered.
 * The suffix comes from `Chat:SocialSuffix` (gated by `annotateSocial`), not from
   a second implementation.
 * The icon is an inline `|t<size>:<size>:<path>|t ` prefix in the same label.
@@ -472,7 +486,8 @@ end in `IRY:RefreshUI()`.
 `|t<size>:<size>:<path>|t ` markup; the social rows do too (see 7.4). The size
 comes from `settings.iconSize2d`, clamped to `IRY.ICON.min`/`max`
 (`socialMax` for social rows, 24 px for browser rows so the 26 px row does not
-grow).
+grow). The Group Finder's group list is the exception: its player icon is OSI's
+overlay in `leaderIcon`, and IRY only appends the remembered-name suffix (7.4).
 
 The target frame has two modes. When the name is rebuilt, the icon is part of the
 rebuilt line. When it is not (`replaceTargetName` off, or a player the store does
@@ -609,6 +624,56 @@ screen offset and only *looks* like it is above the head when the target is at a
 matching distance. Dragging is the replacement for a distance formula: there is
 no `GetUnitDistance` (or any distance-to-unit function) in the official API, so
 the user positions the picture for the range they care about.
+
+---
+
+### 7.8 World map and minimap pins (`ui/worldmap.lua`)
+
+ESO creates player pins **only for group members**; it exposes no position and
+no pin for an arbitrary remembered player. The module therefore decorates the
+pins the game already has and never creates its own.
+
+**Hook.** `ZO_WorldMap_GetPinManager().CreatePin` is wrapped after every
+`EVENT_PLAYER_ACTIVATED`, so IRY's wrapper is the outermost one and wins when
+another addon (including OdySupportIcons) also repaints the same pin. The same
+manager drives the world map and minimaps that reuse it — confirmed with
+Votan's Minimap; minimaps with their own pin system (Fyrakin's) are outside this
+hook and would need a separate adapter. Pins are created lazily, so the hook
+applies to every pin the game draws after it is installed.
+
+**Which pins.** Only `pin:IsGroup()` pins with a `GetUnitTag()` are considered,
+and breadcrumbs (`pin.m_PinTag.isBreadcrumb`) are skipped: in another zone the
+game draws the last known position, which has no live unit behind it. All other
+pins (wayshrines, quests, vendors, the player marker) keep their texture.
+
+**What changes.** Only `pin.backgroundControl:SetTexture(path)` and a neutral
+`SetColor(1, 1, 1, 1)`. Size, anchors, frame, animation and the pin's own state
+are untouched. The path comes from `IRY.Icons:ForUnit(tag)` — the same single
+rule as every other surface, so manual icons beat the blacklist marker and
+`showIcons` switches the map off with everything else. The separate `mapIcons`
+checkbox turns off only this surface.
+
+**Restore.** The first time a pin is decorated its current texture and colour
+are stored in a weak-keyed record on the pin (`pin.__iryMapPin`). Because pin
+objects are pooled and reused for other tags, `restorePin` checks
+`GetTextureFileName()` first: it puts the old texture back only while the
+control still shows the path IRY set, so a pin the game has already reassigned
+is never clobbered. Pins stay in the weak `tracked` set after a restore, which
+lets a later `Refresh` decorate them again even if the game reuses the pin
+without calling `CreatePin`.
+
+**Refresh.** `WorldMap:Refresh()` installs/re-installs the hook, calls
+`ZO_WorldMap_RefreshGroupPins()` and then re-applies every tracked pin. It is
+called from `IRY:RefreshUI()` (icon assignment, ignore-list change,
+rename/merge) and from `EVENT_PLAYER_ACTIVATED`, group
+join/leave/connect/disconnect, group account name updates and group character
+renames. Resolution is cheap and the path is idempotent, which is what makes
+clearing an icon restore the game's pin.
+
+**OdySupportIcons.** Nothing here reads or writes OSI settings. If OSI is
+installed its own map option may paint the same group pin; both resolve the same
+texture, so the visible result does not depend on the order. Without OSI the map
+feature still works.
 
 ---
 
@@ -822,6 +887,7 @@ here is also filled in by `Store:EnsureSchema` for existing saves.
 | `pendingTtlDays` | `30` | number | — | pending expiry on login (code only) |
 | `showIcons` | `true` | bool | checkbox | master switch for every icon |
 | `iconSize2d` | `28` | number | slider 16–40, step 2 | inline icon size in the UI |
+| `mapIcons` | `true` | bool | checkbox | IRY icons on group pins of the world map and minimaps |
 | `reticleMarker` | `false` | bool | checkbox | show the screen-space reticle marker |
 | `reticleMarkerX` | `0` | number | drag | marker offset from the screen centre, X |
 | `reticleMarkerY` | `-60` | number | drag | marker offset from the screen centre, Y |
@@ -908,9 +974,15 @@ in both languages.
 * Pending entries are pruned on login only (`pendingTtlDays`), not on a timer.
 * There is no import/export and no backup; `IRememberYouSV` is the only copy.
 * Icons need a non-empty `core/iconpacks.lua` manifest; without shipped DDS
-  files nothing is drawn. 3D icons additionally need OdySupportIcons with its
-  "show custom 3D icons" option on. OSI's own unique/LibCustomIcons overlays are
-  independent of our rule and can still appear next to our icon in a 2D list.
+  files nothing is drawn. 3D icons and the Group Finder's group-list icon
+  additionally need OdySupportIcons (its group-window icons are on by default).
+  Without OSI every 2D icon drawn by this addon and the group-list suffix still
+  work. OSI's own unique/LibCustomIcons overlays are independent of our rule and
+  can still appear next to our icon in a 2D list.
+* Map icons cover group members only: ESO has no pins for other players. The
+  hook reaches the world map and minimaps built on the standard pin manager
+  (Votan's); Fyrakin's and similar minimaps with their own pin system are not
+  supported.
 
 ---
 
@@ -954,13 +1026,17 @@ Before a release, in a live client:
     entity with merged players inside, with a readable message.
 17. Offline friend: with a friend offline, `/reloadui` must create a row with
     their last known character (or account only, if no character is known).
-18. Friends list and guild roster: the remembered name is appended in grey, the
-    account name is unchanged and still sorted first; the location column starts
-    at the same x on every row, whether or not that row has a remembered name,
-    and no location text is clipped; a long remembered name is shortened with
-    "...", not pushed into the next column; turning `annotateSocial` off removes
-    the suffix on the next refresh; rows that refresh repeatedly never gain a
-    second suffix.
+18. Friends list, guild roster and group list: the remembered name is appended
+    in grey, the game's own name is unchanged and social rows still sort by it;
+    the location column starts at the same x on every social row, whether or not
+    that row has a remembered name, and no location text is clipped; a long
+    remembered name is shortened with "...", not pushed into the next column;
+    turning `annotateSocial` off removes the suffix on the next refresh; rows
+    that refresh repeatedly never gain a second suffix. In the Group Finder's
+    group tab the suffix follows the numbered character name
+    (`1. Name (OldName)`) and the number stays; IRY adds no inline icon to that
+    text, and the icon in the row's icon column (when OSI is loaded) is OSI's.
+    A known player whose shown name equals the remembered name gets no suffix.
 19. Alliance: target a player, note the alliance in the detail panel, then meet
     them in a different alliance (campaign guest, group) — the value updates on
     the next observation and does not reset to "unknown" after a kill-feed line
@@ -994,6 +1070,16 @@ Before a release, in a live client:
     twice. With pChat installed the annotation must still appear; turning
     "annotate chat" off must leave the feed annotated (the settings are
     independent).
+25. Icons, world map and minimap: stand in a group with a remembered player — on
+    the world map and on Votan's Minimap their pin shows the assigned icon;
+    zooming and panning keep it; leave the group — the pin goes away with the
+    group. Uncheck **Icons on the world map and minimap** — the game's own pin
+    texture comes back; `/pa icons off` hides it too. Players outside the group
+    have no pins, so nothing is drawn for them.
+26. Icons, group list: with OdySupportIcons loaded, the group tab of the Group
+    Finder still shows its icon in the row's icon column and the remembered
+    name after the numbered character name. Without OSI the row keeps the
+    suffix but has no player icon — that is expected.
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's
@@ -1024,7 +1110,9 @@ and never writes anything; `IRY.version` in `core/constants.lua` and
 4. The workflow packages the addon, creates the tag `v<version>` and publishes a
    GitHub release with `IRememberYou_v<version>.zip` and bilingual installation
    notes. A version that already has a release is skipped, so bump the version
-   to publish again.
+   to publish again. While `RELEASE_PRERELEASE` is `"true"` in
+   `.github/workflows/release.yml`, the release is a GitHub pre-release and its
+   title gets a `beta` suffix; set it to `"false"` only for a final release.
 5. Pushing the tag yourself also works, but it must be exactly `v<version>`;
    pushing `main` is the normal path.
 6. Run the live-client checklist above (§15) against the archive before

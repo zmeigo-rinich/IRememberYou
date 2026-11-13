@@ -14,7 +14,7 @@ IRY = IRY or {}
 
 IRY.name      = ADDON_NAME
 IRY.title     = ADDON_TITLE
-IRY.version   = "0.4.0"
+IRY.version   = "0.5.0"
 IRY.author    = "I remember you! contributors"
 IRY.svName    = SV_NAME
 IRY.svVersion = SV_VERSION
@@ -157,6 +157,10 @@ IRY.SettingsDefaults = {
     showIcons            = true,
     iconSize2d           = IRY.ICON.default,
     blacklistIcons       = true,
+    -- Player icons on group pins: the world map and minimaps that reuse the
+    -- standard pin manager (Votan's Minimap). On by default: the feature is
+    -- invisible until a map is opened, and showIcons still switches it off.
+    mapIcons             = true,
     -- An optional screen-space picture above the crosshair. Off by default so
     -- the screen does not change for anyone who never asked for it. X/Y are
     -- offsets from the screen centre, in UI pixels; the user drags the marker

@@ -1,9 +1,9 @@
 ## Title: I remember you!
 ## APIVersion: 101050 101051
-## Version: 0.4.0
-## AddOnVersion: 400
+## Version: 0.5.0
+## AddOnVersion: 500
 ## SavedVariables: IRememberYouSV
-## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame and in chat, links old and new account IDs into one player entity, adds a resizable browsable player list, and gives each player one icon on every surface, including 3D icons above group members through OdySupportIcons and an optional marker above the reticle.
+## Description: Remembers players across @account and character renames. Shows a stable name in the reticle target frame, chat, social lists and the Group Finder's group list, links old and new account IDs into one player entity, adds a resizable browsable player list, and gives each player one icon on every surface, including group pins on the world map and minimap, 3D icons above group members and group-list icons through optional OdySupportIcons, and an optional marker above the reticle.
 ## Author: I remember you! contributors
 ## OptionalDependsOn: LibAddonMenu-2.0
 
@@ -24,6 +24,7 @@ track/poller.lua
 ui/targetframe.lua
 ui/chat.lua
 ui/reticlemarker.lua
+ui/worldmap.lua
 ui/social.lua
 ui/browser.xml
 ui/browser.lua

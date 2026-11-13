@@ -9,7 +9,28 @@ The version lives in `IRememberYou.txt`; `IRY.version` in
 workflow publishes the zip when `main` is pushed. Add an entry here for every
 user-visible change.
 
-## [Unreleased]
+## [0.5.0] - 2026-11-13
+
+### Added
+
+- Player icons on the world map and on minimaps that use the game's own pin
+  manager (Votan's Minimap). Only the pin texture of group members is replaced;
+  no new pins are created, because ESO exposes no pins for players outside the
+  group. Works without OdySupportIcons, and the new **Icons on the world map and
+  minimap** checkbox together with the existing master switch turns it off.
+- The remembered name is appended in the Group Finder's group list (the group
+  category of the Activity Finder), after the character name. Only the suffix is
+  added: the group index, the row's icon column and the game's own name stay as
+  they are. It follows the existing **Add the remembered name in social and
+  group lists** setting.
+
+### Notes
+
+- OdySupportIcons and LibAddonMenu-2.0 remain optional. OSI is the only source
+  of the 3D icons above group members and of the player icon in the Group
+  Finder's group list; without it the new map pins, every other 2D icon and the
+  remembered-name suffix still work. LibAddonMenu-2.0 only adds the settings
+  panel.
 
 ## [0.4.0] - 2026-11-12
 

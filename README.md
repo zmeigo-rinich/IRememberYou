@@ -25,9 +25,11 @@ Everything it prints is local to your client.
   addon (a curated set plus a lore-friendly pack that reuses ESO's own UI art),
   on the target frame, in the friends list, guild roster, ignore list and
   player browser. With **OdySupportIcons** installed the same icon also floats
-  above group members. Entries on the game's ignore list
-  can get a marker icon automatically (a rooster by default); a manually assigned
-  icon always wins.
+  above group members and appears in the Group Finder's group list; with or
+  without it, group members also get the icon on the world map and on minimaps
+  built on the game's pin manager (Votan's Minimap). Entries on the game's ignore
+  list can get a marker icon automatically (a rooster by default); a manually
+  assigned icon always wins.
 * **Marker above the reticle** — an optional screen-space icon near the crosshair,
   so the target's icon is visible without looking at the target frame. Off by
   default; drag it with the left mouse button wherever it suits you and lock it
@@ -35,15 +37,16 @@ Everything it prints is local to your client.
   targets, living ones or PvP areas.
 * **Chat** — player links get a suffix: `@NewName (OldName)`. The link itself is
   untouched, clicking it still works.
-* **Friends and guild roster** — the remembered name is appended to the account
-  name, `@NewName (OldName)`. The account name itself is never replaced, so the
-  list stays sortable and searchable by the real name.
+* **Friends, guild roster and group list** — the remembered name is appended to
+  the account name in the social lists, `@NewName (OldName)`, and to the
+  character name in the Group Finder's group list. The game's own name is never
+  replaced, so the list stays sortable and searchable by the real name.
 * **PvP kill feed** — messages about kills are annotated with the remembered
   names of both sides.
 * **Notifications** — when a known player shows up under a new `@account`, you
   get one line in chat: `ID change: @Old -> @New is Vasya (#12, confirmed)`.
 
-Only the reticle target frame is touched. Group frames, nameplates and every
+Only the reticle target frame is renamed. Group frames, nameplates and every
 other window keep the game's own naming.
 
 ---
@@ -56,8 +59,11 @@ other window keep the game's own naming.
 2. Start the game, open **Settings → Addons**, enable **I remember you!**.
 3. Type `/reloadui`.
 
-No dependencies. If **LibAddonMenu-2.0** is installed, the addon also gets a
-settings panel; without it everything still works through slash commands.
+No required dependencies. **LibAddonMenu-2.0** adds the settings panel; without
+it everything still works through slash commands. **OdySupportIcons** is
+optional and is the only source of the 3D icons above group members and of the
+player icon in the Group Finder's group list; this addon's own 2D icons, map pins
+and remembered-name suffixes work without it.
 
 ---
 
@@ -143,16 +149,18 @@ a record. You can change that with “Accept probable links without asking”.
 
 * **Target frame** — replace name, replace caption, hide caption.
 * **Chat** — add the remembered name to player links, annotate PvP kills, and
-  append the remembered name in the friends list and guild roster.
+  append the remembered name in the friends list, guild roster and the Group
+  Finder's group list.
 * **Data collection** — which sources may teach the addon anything, whether you
   yourself may be recorded (off by default), plus the target polling interval
   (default 1000 ms).
 * **Linking** — how loudly to report ID changes, whether probable links are
   accepted automatically, whether conflicts are merged automatically.
-* **Player icons** — the master switch, the UI icon size, the optional marker
-  above the reticle (its own size, drag-and-lock placement, dead/hostile/PvP
-  filters), the ignore-list marker and its icon. The 3D part is drawn by
-  OdySupportIcons, if it is installed.
+* **Player icons** — the master switch, the UI icon size, icons on the world map
+  and minimap, the optional marker above the reticle (its own size, drag-and-lock
+  placement, dead/hostile/PvP filters), the ignore-list marker and its icon. The
+  3D part and the group-list icon are drawn by OdySupportIcons, if it is
+  installed.
 * **Maintenance** — retention period (`0` = never forget), a “forget old players
   now” button (it only previews until you confirm with a typed word in chat),
   and debug output.
@@ -175,14 +183,20 @@ delete anything by itself.
   seconds after login.
 * Renaming a character does not rename the player: the entity keeps its stable
   name and gains one more character alias.
-* In the friends list and guild roster the remembered name shares the name
-  column with the account: a long one is shortened with an ellipsis. Nothing is
-  resized, so the location column never shifts.
-* 3D icons need **OdySupportIcons**; without it every 2D surface still works.
-  The icon library ships with the addon: 75 icons in `icons/base`, plus a
-  lore-friendly pack of 82 textures that ESO already ships in its own UI art.
-  Both are listed in `core/iconpacks.lua` and chosen in the detail panel or
-  with `/pa icon`; the picker pages through them.
+* In the friends list, guild roster and group list the remembered name shares
+  the name column with the game's name: a long one is shortened with an
+  ellipsis. Nothing is resized, so the location column never shifts.
+* 3D icons above group members and the player icon in the Group Finder's group
+  list are drawn by **OdySupportIcons**; without it every 2D icon drawn by this
+  addon and the remembered-name suffix still work. OSI's group-window icons are
+  enabled by default. The icon library ships with the addon: 75 icons in
+  `icons/base`, plus a lore-friendly pack of 82 textures that ESO already ships
+  in its own UI art. Both are listed in `core/iconpacks.lua` and chosen in the
+  detail panel or with `/pa icon`; the picker pages through them.
+* Map icons are available only for **group members**: ESO creates no pins for
+  other players. They appear on the world map and on minimaps that use the
+  game's own pin manager (Votan's Minimap); minimaps with their own pin system
+  (Fyrakin's) are not covered. OdySupportIcons is not required.
 * The marker above the reticle is a screen-space overlay, not a 3D icon: it does
   not follow the distance to the target. A close target appears as a picture at
   chest height, a distant one as a picture above the head. Drag it to the spot
@@ -202,6 +216,9 @@ delete anything by itself.
   addon still tries to work; check for a newer release.
 * **No settings panel** — LibAddonMenu-2.0 is not installed. Use the slash
   commands instead.
+* **No player icon in the Group Finder's group list** — that icon is drawn by
+  OdySupportIcons, not by this addon. The remembered-name suffix works without
+  it; check OSI's group-window icon options.
 * **A stranger is showing my friend's name** — open the list, select the wrong
   row and use **Reset**, or `/pa undo` the merge the addon made.
 * **You are in the list yourself** — from 0.2.1 on the addon ignores you. An old
@@ -218,6 +235,17 @@ delete anything by itself.
 ---
 
 ## Changelog
+
+**0.5.0**
+* player icons on the world map and on minimaps built on the game's pin manager
+  (Votan's Minimap); only group members have pins, so only they are covered;
+* the remembered name is appended in the Group Finder's group list, after the
+  numbered character name; the group index and the game's own name stay where
+  they were;
+* the group-list player icon is drawn by OdySupportIcons when it is installed;
+  without it the suffix, the map pins and every 2D icon drawn by this addon
+  still work;
+* OdySupportIcons and LibAddonMenu-2.0 remain optional.
 
 **0.4.0**
 * one icon per player across the target frame, friends list, guild roster,
@@ -279,7 +307,7 @@ IRememberYou/
   core/                   constants, store, resolver, printing, icons, blacklist
   icons/                  the curated DDS icon library (listed in core/iconpacks.lua)
   track/                  observation, rename detection, target poll
-  ui/                     target frame, chat, friends/guild list, browser, icon picker, settings, commands
+  ui/                     target frame, chat, friends/guild/group lists, map, browser, icon picker, settings, commands
   lang/                   English and Russian strings
 ```
 

@@ -179,8 +179,8 @@ IRY.L = {
     OPT_ANNOTATE_CHAT_TIP = "Appends ' (Name)' inside chat links so a renamed @account stays recognisable. Local display only: other players see nothing.",
     OPT_ANNOTATE_KILLFEED = "Annotate PvP kill messages",
     OPT_ANNOTATE_KILLFEED_TIP = "Adds remembered names to kill feed notifications.",
-    OPT_ANNOTATE_SOCIAL = "Add the remembered name to friends and guild lists",
-    OPT_ANNOTATE_SOCIAL_TIP = "Appends ' (Name)' to the account name in the friends list and guild roster. Display only: the account name itself is not replaced.",
+    OPT_ANNOTATE_SOCIAL = "Add the remembered name in social and group lists",
+    OPT_ANNOTATE_SOCIAL_TIP = "Appends ' (Name)' to the account name in the friends list and guild roster, and to the character name in the Group Finder's group list. Display only: nothing is replaced.",
 
     OPT_SEC_DATA    = "Data collection",
     OPT_CAPTURE_TARGET = "Learn from the reticle target",
@@ -213,9 +213,11 @@ IRY.L = {
 
     OPT_SEC_ICONS   = "Player icons",
     OPT_SHOW_ICONS  = "Show player icons",
-    OPT_SHOW_ICONS_TIP = "Master switch for every icon: target frame, friends list, guild roster, ignore list, browser and the 3D world. Equivalent to /pa icons off.",
+    OPT_SHOW_ICONS_TIP = "Master switch for every icon: target frame, friends list, guild roster, ignore list, browser, world map and the 3D world. Equivalent to /pa icons off.",
     OPT_ICON_SIZE   = "Icon size in the UI, px",
     OPT_ICON_SIZE_TIP = "Size of the inline icons in the target frame and the player browser. Social lists and browser rows are capped so their layout does not move.",
+    OPT_MAP_ICONS   = "Icons on the world map and minimap",
+    OPT_MAP_ICONS_TIP = "Replaces the pin texture of group members with their icon on the world map and on minimaps that reuse the game's pin manager, such as Votan's Minimap. Players outside your group have no map pin in ESO, so they cannot be shown. Works without OdySupportIcons.",
     OPT_RETICLE_MARKER = "Marker above the reticle",
     OPT_RETICLE_MARKER_TIP = "Shows the target's icon near the crosshair, so you do not have to look at the target frame. It is a screen overlay, not a 3D icon: it does not follow the distance to the target and stays on top of the world. Works only while a remembered player is under the reticle.",
     OPT_RETICLE_MARKER_SIZE = "Marker size, px",
