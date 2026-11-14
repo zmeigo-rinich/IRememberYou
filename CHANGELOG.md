@@ -9,6 +9,15 @@ The version lives in `IRememberYou.txt`; `IRY.version` in
 workflow publishes the zip when `main` is pushed. Add an entry here for every
 user-visible change.
 
+## [0.5.1] - 2026-11-14
+
+### Added
+
+- Six new icons in `icons/base`: `doge-smile`, `horse`, `imperial-soldier`,
+  `risitas-form`, `templar` and `zmeigorinich` (81 icons in the pack now). The
+  doge and horse images were cut out, so their background is transparent; the
+  rest keep the transparency of the source PNGs.
+
 ## [0.5.0] - 2026-11-13
 
 ### Added

@@ -26,7 +26,7 @@
     (rooster.dds), so that file must stay listed; an explicit choice in the
     settings always wins over it.
 
-    The shipped pack is `base`: 75 icons, 128 x 128 DXT5 with mipmaps, 1.6 MB in
+    The shipped pack is `base`: 81 icons, 128 x 128 DXT5 with mipmaps, 1.7 MB in
     total. 64 x 64 also renders fine -- the UI scales them down to 16-40 px and
     the 3D size comes from OdySupportIcons.
 
@@ -48,6 +48,7 @@ IRY.IconPacks = {
             "IRememberYou/icons/base/di-caprio.dds",
             "IRememberYou/icons/base/dog.dds",
             "IRememberYou/icons/base/doge.dds",
+            "IRememberYou/icons/base/doge-smile.dds",
             "IRememberYou/icons/base/emodzi-angeryscimitar.dds",
             "IRememberYou/icons/base/emodzi-angrypepeak47.dds",
             "IRememberYou/icons/base/emodzi-cheemsdoge.dds",
@@ -85,6 +86,8 @@ IRY.IconPacks = {
             "IRememberYou/icons/base/harold.dds",
             "IRememberYou/icons/base/heart.dds",
             "IRememberYou/icons/base/hide-the-pain-harold.dds",
+            "IRememberYou/icons/base/horse.dds",
+            "IRememberYou/icons/base/imperial-soldier.dds",
             "IRememberYou/icons/base/jonnykreng.dds",
             "IRememberYou/icons/base/leaf.dds",
             "IRememberYou/icons/base/lighning.dds",
@@ -100,6 +103,7 @@ IRY.IconPacks = {
             "IRememberYou/icons/base/pepe.dds",
             "IRememberYou/icons/base/pepe-cry.dds",
             "IRememberYou/icons/base/risitas.dds",
+            "IRememberYou/icons/base/risitas-form.dds",
             "IRememberYou/icons/base/roger.dds",
             "IRememberYou/icons/base/rooster.dds",
             "IRememberYou/icons/base/skyrim.dds",
@@ -111,9 +115,11 @@ IRY.IconPacks = {
             "IRememberYou/icons/base/sword-fire.dds",
             "IRememberYou/icons/base/sword-rainbow.dds",
             "IRememberYou/icons/base/tegaro.dds",
+            "IRememberYou/icons/base/templar.dds",
             "IRememberYou/icons/base/trollface.dds",
             "IRememberYou/icons/base/wolf.dds",
             "IRememberYou/icons/base/yoga.dds",
+            "IRememberYou/icons/base/zmeigorinich.dds",
         },
     },
     {

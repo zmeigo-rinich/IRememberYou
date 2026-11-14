@@ -71,10 +71,40 @@ local function sortedKeys(map)
     return keys
 end
 
+-- First-install seed -----------------------------------------------------------
+-- Runs once, when the game has just created the SavedVariables file. The seed
+-- is an ordinary player entity: it can be renamed, given another icon or
+-- forgotten like any other, and an update never repeats it because by then
+-- EnsureSchema has written sv.schema.
+local SEED_ACCOUNT   = "Zmeigo_Rinich"
+local SEED_CHARACTER = "Zmeigo Rinich"
+local SEED_ICON      = "IRememberYou/icons/base/zmeigorinich.dds"
+
+function Store:SeedFirstRun()
+    if not sv or self:FindByAccount(SEED_ACCOUNT) then
+        return nil
+    end
+
+    local id = self:CreatePlayer(SEED_ACCOUNT, SEED_CHARACTER,
+        IRY.SOURCE.MANUAL, IRY.CONFIDENCE.MANUAL)
+    self:SetIcon(id, SEED_ICON)
+    return id
+end
+
 function Store:Initialize(savedVars)
     sv = savedVars
+
+    -- Checked before EnsureSchema, which fills the field below. A nil schema is
+    -- true only for a table the game has just created, never for an existing
+    -- save, so this is the one point where a first install can be recognized.
+    local freshInstall = sv ~= nil and sv.schema == nil
+
     self:EnsureSchema()
     self:RebuildIndices()
+
+    if freshInstall then
+        self:SeedFirstRun()
+    end
 end
 
 function Store:EnsureSchema()

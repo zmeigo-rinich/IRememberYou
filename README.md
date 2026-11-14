@@ -189,7 +189,7 @@ delete anything by itself.
 * 3D icons above group members and the player icon in the Group Finder's group
   list are drawn by **OdySupportIcons**; without it every 2D icon drawn by this
   addon and the remembered-name suffix still work. OSI's group-window icons are
-  enabled by default. The icon library ships with the addon: 75 icons in
+  enabled by default. The icon library ships with the addon: 81 icons in
   `icons/base`, plus a lore-friendly pack of 82 textures that ESO already ships
   in its own UI art. Both are listed in `core/iconpacks.lua` and chosen in the
   detail panel or with `/pa icon`; the picker pages through them.
@@ -235,6 +235,13 @@ delete anything by itself.
 ---
 
 ## Changelog
+
+**0.5.1**
+* six new icons in the shipped library: `doge-smile`, `horse`,
+  `imperial-soldier`, `risitas-form`, `templar` and `zmeigorinich` (81 icons in
+  `icons/base`);
+* the doge and horse pictures were cut out, so their background is transparent;
+  the rest keep the transparency of the source PNGs.
 
 **0.5.0**
 * player icons on the world map and on minimaps built on the game's pin manager

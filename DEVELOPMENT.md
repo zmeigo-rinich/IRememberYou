@@ -97,13 +97,25 @@ EVENT_ADD_ON_LOADED (addon name matches)
 before it is initialized; all modules are loaded earlier but only *defined*
 then.
 
+### First-install seed
+
+`IRY.BuildDefaults()` deliberately omits `schema`; `Store:EnsureSchema` writes it
+as soon as the table is loaded. A nil `schema` therefore means the game has just
+created the SavedVariables file, and `Store:Initialize` captures that flag before
+repairing the schema. On a fresh install it calls `Store:SeedFirstRun()` once: the
+hard-coded account and character in `core/store.lua` become an ordinary entity
+with the `zmeigorinich.dds` icon. Nothing marks the entity as seeded, so renaming
+it, changing its icon or `/pa forget` work as usual. An update never seeds again,
+because an existing save already carries `schema`. `Tools/checks/testseed.lua`
+covers both cases; do not put `schema` back into `BuildDefaults()`.
+
 ---
 
 ## 4. Data model
 
 ```
 IRememberYouSV
-  schema          = 1
+  schema          = 1        -- written by EnsureSchema, absent from BuildDefaults
   nextId          = 1        -- never reused while data exists
   nextPendingId   = 1
   players         = { [id] = Player }

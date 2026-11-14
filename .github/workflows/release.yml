@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 env:
-  # 0.5.0 is published as a beta. The release is created as a GitHub
+  # The 0.5 line is published as a beta. The release is created as a GitHub
   # pre-release and the title gets a "beta" suffix. Set to "false" when the
   # version is bumped for the final release.
   RELEASE_PRERELEASE: "true"
@@ -119,7 +119,7 @@ jobs:
 
           Аддон для The Elder Scrolls Online, который помнит игроков после смены @аккаунта и имени персонажа.
 
-          **Что нового в ${version} / What's new in ${version}:** иконки участников группы на мировой карте и миникарте; запомненное имя в списке группы Поиска группы. Полный список изменений — в [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md).
+          **Что нового в ${version} / What's new in ${version}:** шесть новых иконок в библиотеке — `doge-smile`, `horse`, `imperial-soldier`, `risitas-form`, `templar` и `zmeigorinich` (81 иконка в базовом пакете). Полный список изменений — в [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md).
 
           **Необязательные зависимости / Optional dependencies:** LibAddonMenu-2.0 — панель настроек; OdySupportIcons — 3D-иконки над участниками группы и иконки игроков в списке группы. Остальное, включая пины на карте и подписи с запомненным именем, работает без них.
 

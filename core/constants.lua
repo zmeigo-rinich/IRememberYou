@@ -14,7 +14,7 @@ IRY = IRY or {}
 
 IRY.name      = ADDON_NAME
 IRY.title     = ADDON_TITLE
-IRY.version   = "0.5.0"
+IRY.version   = "0.5.1"
 IRY.author    = "I remember you! contributors"
 IRY.svName    = SV_NAME
 IRY.svVersion = SV_VERSION
@@ -194,7 +194,10 @@ function IRY.BuildDefaults()
     end
 
     return {
-        schema   = SV_VERSION,
+        -- `schema` is deliberately absent. Store:EnsureSchema writes it right
+        -- after the SavedVariables table is loaded, so a missing field means the
+        -- game has just created the file. The first-install seed relies on that
+        -- signal; an existing save always carries the version.
         nextId   = 1,
         nextPendingId = 1,
         players  = {},
