@@ -57,15 +57,19 @@ and strings first, the UI XML before the Lua that uses it, the bootstrap last.
 | 18 | `ui/worldmap.lua` | IRY icons on group pins of the world map and minimaps |
 | 19 | `ui/social.lua` | friends, guild, ignore and group list row decoration |
 | 20 | `ui/browser.xml` | window, footer, detail panel, row and line templates |
-| 21 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/merge/undo/pending/purge |
-| 22 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
-| 23 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
-| 24 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
-| 25 | `ui/commands.lua` | `/pa` and `/iry` |
-| 26 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
+| 21 | `ui/browser.lua` | list logic, paging, resize, detail panel, rename/comment/merge/undo/pending |
+| 22 | `ui/contextmenu.lua` | "Open in IRY" in the guild, friends and group context menus |
+| 23 | `ui/iconpicker.xml` | the 8 x 5 icon picker window |
+| 24 | `ui/iconpicker.lua` | picker grid, paging, player and blacklist modes |
+| 25 | `ui/settings.lua` | LibAddonMenu-2.0 panel |
+| 26 | `ui/commands.lua` | `/pa` and `/iry` |
+| 27 | `IRememberYou.lua` | `EVENT_ADD_ON_LOADED` bootstrap |
 
-The manifest also declares `## OptionalDependsOn: LibAddonMenu-2.0`, so LAM is
-guaranteed to be loaded before `ui/settings.lua` runs when it is installed.
+The manifest also declares `## OptionalDependsOn: LibAddonMenu-2.0 LibCustomMenu`,
+so both libraries are guaranteed to be loaded before `ui/settings.lua` and
+`ui/contextmenu.lua` run when they are installed. LibCustomMenu is not bundled:
+without it the addon still loads, the guild/ friends/ group menu item is simply
+absent, and `ContextMenu:Initialize` prints a one-time warning.
 
 ---
 
@@ -131,7 +135,9 @@ Player
   isCustom     boolean      -- true when displayName came from the user
   createdAt    number       -- os.time(); drives merge order
   updatedAt    number       -- last touch; drives list order
-  notes        string
+  notes        string       -- what every surface shows: base text + merged parts
+  notesBase    string?      -- merge provenance: the survivor's own text
+  notesParts   { { id, text }, ... }?  -- texts absorbed by Merge, keyed by source id
   aliases      { [accountKey] = Alias }
   characters   { [characterName] = Character }
   mergedInto   number?      -- tombstone: absorbed by that id
@@ -210,6 +216,7 @@ These are load-bearing; violations show up as duplicate entities or lost names.
 | `Touch` | updates `updatedAt` and `lastSeen` for known keys |
 | `Merge(srcId, dstId, reason)` | copies aliases/characters/notes, keeps the custom name if needed, tombstones `src`, rebuilds indices |
 | `UndoMerge(srcId)` | `srcId` must be the tombstone id; removes from `dst` only keys whose index still points at `dst` |
+| `SetNotes(id, text)` / `GetNotes(id)` | sanitized comment (max 500 bytes, UTF-8 safe); a manual set drops the merge provenance |
 | `Forget(id)` | deletes one standalone entity and drops pending entries that reference it; refuses tombstones and entities with tombstones pointing at them |
 | `OrderForMerge(a, b)` | `keep, drop`: older `createdAt` wins, tie broken by lower id |
 | `DefaultDisplayName(player)` | earliest alias `firstSeen`, else earliest character, else `?` |
@@ -217,7 +224,7 @@ These are load-bearing; violations show up as duplicate entities or lost names.
 | `List(limit)` | non-tombstoned players, newest `updatedAt` first |
 | `Dump(id)` | array of debug lines |
 | `AddPending` / `GetPending` / `FindBridgePending` / `RemovePending` / `PrunePending` | pending queue |
-| `Purge(days)` | removes only non-custom, non-tombstoned entities whose **newest** `lastSeen` is older than the cutoff; `days <= 0` is a no-op |
+| `Purge(days)` | removes only non-custom, non-tombstoned entities with an empty note whose **newest** `lastSeen` is older than the cutoff; `days <= 0` is a no-op |
 | `Wipe()` | erases players, pending, counters, stats; settings survive |
 
 `Reconcile` contains a conflict branch of its own (merge when one character maps
@@ -457,10 +464,10 @@ name.
   because the absorbed name must be shown as it was *before* the merge.
 * `IRY:NotifyPending` — one line with the id and both `/pa yes|no` hints.
 * `IRY:RefreshUI` — the only "redraw everything" entry point.
-* `IRY:PurgeOldPlayers(days, confirmed)` — shared by the settings button, the
-  browser and `/pa purge`. Without `confirmed` it only prints what would be
-  removed and the exact confirmation command; with it, performs the purge,
-  reports the result and returns the removed count.
+* `IRY:PurgeOldPlayers(days, confirmed)` — shared by the settings button and
+  `/pa purge`. Without `confirmed` it only prints what would be removed and the
+  exact confirmation command; with it, performs the purge, reports the result and
+  returns the removed count. Players with a custom name or a comment are kept.
 
 ---
 
@@ -713,9 +720,11 @@ Groups of controls:
   `HeadId/Name/Meta/Seen`;
 * list: `Rows` and the 40 generated `IRY_BrowserRowN`;
 * footer: `Detail` summary label, `RenameBGEdit`, `Rename`, `Reset`, `Merge`,
-  `Undo`, `Yes`, `No`, `Prev`, `PageLabel`, `Purge`, `Next`;
+  `Undo`, `Yes`, `No`, `Prev`, `PageLabel`, `Next` (the duplicate purge button
+  was removed in 0.6.0);
 * detail panel: `IRY_BrowserDetailPanel` with `…Title`, `…Lines` (holds the
-  generated `IRY_DetailLineN`), `…Hint`, `…Close`, `…BG`.
+  generated `IRY_DetailLineN`), `…Hint`, `…Close`, `…BG`, and the fixed comment
+  block `…NotesLabel`, `…NotesSave`, `…NotesBG` / `…NotesEdit`.
 
 Footer buttons and detail-panel children have explicit global names instead of
 `$(parent)…`. The page-size check script in the release notes assumes
@@ -728,6 +737,7 @@ state = {
   tab, page, search, selected, mergeFirst, data,
   left, top, width, height, rowsPerPage,
   detailOpen, detailPlayerId, detailOffset, detailVisible, detailItems,
+  detailNotesPlayerId, detailNotesFocused,
 }
 ```
 
@@ -757,8 +767,14 @@ state = {
   the newest `mergedAt`.
 * Rename commits on Enter, on the button, and on focus loss — but focus loss
   only commits when the text really differs, so clicking around stays quiet.
-* `Purge` calls `IRY:PurgeOldPlayers()` with the stored retention period, so a
-  click only prints the confirmation prompt.
+* The comment box belongs to one player: `detailNotesPlayerId` tracks the owner
+  and `detailNotesFocused` marks a live draft. `RenderNotes` never overwrites a
+  focused draft; `CommitNotes(quiet)` saves only when the owner still matches
+  the player on screen and is called before opening/closing the detail panel and
+  before merge/undo. `Store:SetNotes` strips the merge provenance, so a later
+  undo cannot cut hand-written text.
+* `Purge` was removed from the browser in 0.6.0; the settings button and
+  `/pa purge` still call `IRY:PurgeOldPlayers()`.
 * Mouse wheel pages (`TurnPage(-delta)`); Prev/Next buttons do the same.
 * Geometry is saved on `OnMoveStop` **and** `OnResizeStop` into
   `settings.browserLeft/browserTop/browserWidth/browserHeight` (deliberately not
@@ -795,6 +811,12 @@ muted    no accounts recorded / no characters recorded
 Alliance text comes from `Util.FormatAlliance` (`GetAllianceName` +
 `ZO_CachedStrFormat(SI_ALLIANCE_NAME, …)`), so it follows the client language.
 Scroll with the wheel: `ScrollDetail` clamps the offset to `#items - visible`.
+
+The comment block is fixed below the scrolling lines (`…Lines` is anchored to
+`BOTTOMRIGHT offsetY="-140"`), so it never scrolls out of reach. The EditBox is
+multiline and capped at `IRY.MAX_NOTE_LENGTH` (500). Merge provenance
+(`notesBase` + `notesParts`) lives in `core/store.lua`; the browser only edits
+the final `notes` text through `Store:SetNotes`.
 
 ### Scene integration
 
@@ -1013,9 +1035,10 @@ Before a release, in a live client:
 5. Conflict: `/pa debug conflict` → automatic merge (default) and
    `autoMergeOnConflict` off → conflict pending.
 6. `/pa undo <id>` restores both entities exactly (aliases and characters).
-7. Browser: search with and without `@`, both tabs, paging and mouse wheel,
-   merge two rows, undo last merge, purge with 0 and with a positive value,
-   hover highlight, `Escape` closes and does not open the game menu.
+7. Browser: search with and without `@` (also by comment text), both tabs,
+   paging and mouse wheel, merge two rows, undo last merge, hover highlight,
+   `Escape` closes and does not open the game menu. Set a comment, reload, check
+   it persists and is found by search.
 8. Resize the browser: drag the bottom-right corner, check the min/max clamps,
    that the visible row count changes immediately, and that size and position
    survive a `/reloadui`. Shrink it until the list shows only a few rows.
@@ -1023,7 +1046,9 @@ Before a release, in a live client:
    and level; click another player — the same panel changes contents; switch
    tabs, close the list and press `Escape` — it disappears; open it while the
    window sits at the right screen edge — it flips to the left; scroll it with
-   the wheel until the hint shows the last position.
+   the wheel until the hint shows the last position. Type a comment, click
+   another row, come back — the text is saved; merge two commented players and
+   undo — only the merged-in text is removed.
 10. Settings panel: every control changes behaviour immediately; "Defaults"
     restores all values and side effects (poller restart) still happen.
 11. Russian client: all strings, button widths, keybind name; no overflow.
@@ -1092,6 +1117,28 @@ Before a release, in a live client:
     Finder still shows its icon in the row's icon column and the remembered
     name after the numbered character name. Without OSI the row keeps the
     suffix but has no player icon — that is expected.
+27. Open in IRY, guild roster: right-click a member with LibCustomMenu installed
+    — **Open in IRY** appears; clicking it opens the list filtered to that
+    player, selected, with the detail panel open. A member not remembered before
+    is added with the source `context` and confirmed confidence. Opening the menu
+    alone must not add anybody.
+28. Open in IRY, friends and group: the same on an offline friend (account only,
+    no character) and on a group row (account plus character, live class/level
+    copied). Without LibCustomMenu nothing is added and a one-time chat warning
+    names the library; with an old library that lacks the friends/group
+    registrations the guild roster still gets the item and a different warning
+    appears. Your own row has no item.
+29. Open in IRY, ambiguity: make two rows (`/pa debug fake` twice, then rename
+    one) such that a clicked row's account belongs to the first and its
+    character to the second. The action must show both rows, print the
+    "two players" message, and merge nothing. `/pa find @account` and
+    `/pa find Character` behave the same as the menu item.
+30. Search reset: open the list via Open in IRY, close it with `Escape`, reopen
+    with the keybind — the search box is empty and the full list is visible.
+    Repeat with a two-row ambiguity filter. The same reset happens after
+    `/pa browse` and `/pa find`.
+31. Reload persistence: add a player via Open in IRY, `/reloadui`, and confirm
+    the row, its `context` provenance and its comment survive.
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's

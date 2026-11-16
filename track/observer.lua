@@ -210,6 +210,58 @@ function Observer:RejectPending(pendingId)
     return IRY.Store:RemovePending(pendingId)
 end
 
+-- Explicit user action: "open in IRY" from a social list or /pa find.
+--
+-- Unlike Observe this never merges two entities and never creates a pending
+-- entry: the clicked row is a lookup key, not proof that two existing entities
+-- are one person. It only creates a missing player or enriches the one that is
+-- already known. Returns:
+--   id, "created" | "linked" | "known"
+--   nil, "ambiguous", firstId, secondId   (both keys belong to different rows)
+--   nil, "self" | "invalid"
+function Observer:EnsurePlayer(account, character, info)
+    if not account and not character then
+        return nil, "invalid"
+    end
+
+    -- The same central guard as Observe: yourself is never a remembered player.
+    if settings().ignoreSelf and self:IsSelf(account, character) then
+        return nil, "self"
+    end
+
+    local pa = account and IRY.Store:FindByAccount(account) or nil
+    local pc = character and IRY.Store:FindByCharacter(character) or nil
+
+    -- Two different entities share the clicked pair. Merging is a deliberate
+    -- action in the browser, so return both and let the caller show them.
+    if pa and pc and pa ~= pc then
+        return nil, "ambiguous", pa, pc
+    end
+
+    local id = pa or pc
+    if not id then
+        id = IRY.Store:CreatePlayer(account, character,
+            IRY.SOURCE.CONTEXT, IRY.CONFIDENCE.CONFIRMED, info)
+        IRY:RefreshUI()
+        return id, "created"
+    end
+
+    id = IRY.Store:ResolveFinal(id)
+
+    local addedAccount, addedCharacter
+    if account then
+        addedAccount = IRY.Store:AttachAccount(id, account,
+            IRY.SOURCE.CONTEXT, IRY.CONFIDENCE.CONFIRMED)
+    end
+    if character then
+        addedCharacter = IRY.Store:AttachCharacter(id, character, info)
+    end
+    IRY.Store:Touch(id, account, character)
+
+    IRY:RefreshUI()
+    return id, (addedAccount or addedCharacter) and "linked" or "known"
+end
+
 -- Unit snapshots --------------------------------------------------------------
 
 function Observer:KeepUnit(unitTag, source, opts)

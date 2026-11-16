@@ -49,6 +49,7 @@ local state = {
     tab        = "players",
     page       = 1,
     search     = "",
+    focusIds   = nil,       -- temporary filter set by the context-menu action
     selected   = nil,       -- player id (players tab) or pending id
     mergeFirst = nil,       -- first id picked for a merge
     data       = {},
@@ -63,7 +64,12 @@ local state = {
     detailOffset   = 0,
     detailVisible  = 0,
     detailItems    = {},
+    detailNotesPlayerId = nil,
+    detailNotesFocused  = false,
 }
+
+-- Exposed for the test harness.
+Browser.state = state
 
 local function settings()
     return IRY.Store:GetSettings() or {}
@@ -117,6 +123,11 @@ local function matches(player, needle)
         end
     end
 
+    local notes = player.notes or ""
+    if notes ~= "" and notes:lower():find(needle, 1, true) then
+        return true
+    end
+
     return false
 end
 
@@ -159,6 +170,23 @@ function Browser:Collect()
         table.sort(result, function(a, b)
             return a.entry.id < b.entry.id
         end)
+        return result
+    end
+
+    -- An explicit action (context menu, /pa find) may ask for exactly one or
+    -- two rows, bypassing the search text. The filter is temporary and is
+    -- dropped as soon as the user types or closes the window.
+    if state.focusIds then
+        local wanted = {}
+        for _, id in ipairs(state.focusIds) do
+            wanted[id] = true
+        end
+
+        for _, player in ipairs(IRY.Store:List()) do
+            if wanted[player.id] then
+                result[#result + 1] = { kind = "player", player = player }
+            end
+        end
         return result
     end
 
@@ -390,6 +418,34 @@ function Browser:RenderDetailIcon(player)
     end
 end
 
+-- The comment box belongs to exactly one player at a time. While it has focus
+-- its text is the user's draft and must not be overwritten by a refresh; when
+-- the shown player changes, the text is replaced.
+function Browser:RenderNotes(player)
+    local edit = IRY_BrowserDetailNotesEdit
+    if not edit then
+        return
+    end
+
+    local current = edit:GetText() or ""
+    local ownerId = state.detailNotesPlayerId
+        and IRY.Store:ResolveFinal(state.detailNotesPlayerId)
+
+    if ownerId ~= player.id then
+        state.detailNotesPlayerId = player.id
+        edit:SetText(player.notes or "")
+        return
+    end
+
+    -- An automatic merge can turn the raw id into a tombstone while the same
+    -- person stays on screen; keep the draft but move it to the survivor.
+    state.detailNotesPlayerId = player.id
+
+    if not state.detailNotesFocused and current ~= (player.notes or "") then
+        edit:SetText(player.notes or "")
+    end
+end
+
 function Browser:RenderDetailPanel()
     local panel = IRY_BrowserDetailPanel
     if not panel then
@@ -412,11 +468,13 @@ function Browser:RenderDetailPanel()
 
     panel:SetHidden(false)
     self:RenderDetailIcon(player)
+    self:RenderNotes(player)
 
     local linesHeight = IRY_BrowserDetailPanelLines and IRY_BrowserDetailPanelLines:GetHeight() or 0
     if not linesHeight or linesHeight <= 0 then
         local panelHeight = panel:GetHeight() or MIN_HEIGHT
-        linesHeight = panelHeight - 152
+        -- 124 px icon/title block on top, 140 px fixed comment block below.
+        linesHeight = panelHeight - 264
     end
 
     local visible = math.floor(linesHeight / DETAIL_LINE_HEIGHT)
@@ -553,6 +611,11 @@ function Browser:OpenDetail(id)
         return
     end
 
+    -- Save the draft of the previous player before the box is reused.
+    if state.detailOpen then
+        self:CommitNotes(true)
+    end
+
     state.detailOpen = true
     state.detailPlayerId = id
     state.detailOffset = 0
@@ -562,9 +625,13 @@ function Browser:OpenDetail(id)
 end
 
 function Browser:CloseDetail()
+    self:CommitNotes(true)
+
     state.detailOpen = false
     state.detailPlayerId = nil
     state.detailOffset = 0
+    state.detailNotesPlayerId = nil
+    state.detailNotesFocused = false
 
     if IRY_BrowserDetailPanel then
         IRY_BrowserDetailPanel:SetHidden(true)
@@ -597,6 +664,57 @@ function Browser:ScrollDetail(delta)
 
     state.detailOffset = nextOffset
     self:RenderDetailPanel()
+end
+
+-- Comment ---------------------------------------------------------------------
+
+function Browser:OnNotesFocusGained()
+    state.detailNotesFocused = true
+end
+
+function Browser:OnNotesFocusLost()
+    state.detailNotesFocused = false
+    self:CommitNotes()
+end
+
+-- Saves only when the box really belongs to the player on screen. `quiet`
+-- skips the full list refresh when the caller is already about to redraw
+-- (closing the panel, switching rows, merging).
+function Browser:CommitNotes(quiet)
+    local edit = IRY_BrowserDetailNotesEdit
+    if not state.detailOpen or not state.detailNotesPlayerId or not edit then
+        return
+    end
+
+    local ownerId = IRY.Store:ResolveFinal(state.detailNotesPlayerId)
+    local shownId = state.detailPlayerId
+        and IRY.Store:ResolveFinal(state.detailPlayerId)
+    if ownerId ~= shownId then
+        return
+    end
+
+    local player = IRY.Store:GetPlayer(ownerId)
+    if not player then
+        return
+    end
+
+    local text = edit:GetText() or ""
+    if text == (player.notes or "") then
+        return
+    end
+
+    local ok, saved = IRY.Store:SetNotes(ownerId, text)
+    if not ok then
+        IRY:Print(string.format(IRY.L.NOTE_SAVE_FAILED, ownerId))
+        return
+    end
+
+    edit:SetText(saved or "")
+    IRY:RefreshUI()
+
+    if not quiet then
+        self:Refresh()
+    end
 end
 
 -- Actions ---------------------------------------------------------------------
@@ -685,11 +803,6 @@ function Browser:OnRenameFocusLost()
     self:CommitRename()
 end
 
-function Browser:PurgeOld()
-    IRY:PurgeOldPlayers()
-    self:Refresh()
-end
-
 function Browser:ResetName()
     if state.tab ~= "players" or not state.selected then
         return
@@ -729,6 +842,10 @@ function Browser:MergeSelected()
         return
     end
 
+    -- The merge rewrites the survivor's comment; the draft must land on its
+    -- current owner before the ids move.
+    self:CommitNotes(true)
+
     if not state.mergeFirst then
         state.mergeFirst = state.selected
         self:RenderDetail()
@@ -752,6 +869,8 @@ function Browser:MergeSelected()
     if state.detailOpen then
         state.detailPlayerId = keep
         state.detailOffset = 0
+        state.detailNotesPlayerId = nil
+        state.detailNotesFocused = false
     end
 
     IRY:RefreshUI()
@@ -759,6 +878,8 @@ function Browser:MergeSelected()
 end
 
 function Browser:UndoLastMerge()
+    self:CommitNotes(true)
+
     local sv = IRY.Store:GetSV()
     local newest
 
@@ -784,6 +905,8 @@ function Browser:UndoLastMerge()
     if state.detailOpen then
         state.detailPlayerId = newest.id
         state.detailOffset = 0
+        state.detailNotesPlayerId = nil
+        state.detailNotesFocused = false
     end
 
     IRY:RefreshUI()
@@ -823,14 +946,81 @@ function Browser:SetTab(tab)
     state.page = 1
     state.selected = nil
     state.mergeFirst = nil
+    -- An invisible focus filter must not survive an explicit tab change: the
+    -- user would come back to a list that silently hides most players.
+    state.focusIds = nil
     self:CloseDetail()
     self:Refresh()
 end
 
 function Browser:OnSearchChanged(text)
+    -- Typing is an explicit new filter: the context-menu focus, if any, is done.
+    state.focusIds = nil
     state.search = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
     state.page = 1
     self:Refresh()
+end
+
+-- Keep the visible text and the filter in sync. EditBox:SetText is not
+-- guaranteed to fire OnTextChanged, so the state is updated here as well.
+function Browser:SetSearchText(text)
+    text = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    state.focusIds = nil
+    state.search = text
+    state.page = 1
+    if IRY_BrowserSearchBGEdit then
+        IRY_BrowserSearchBGEdit:SetText(text)
+    end
+    self:Refresh()
+end
+
+-- Open the list on one or two known players.
+-- One player goes through the search box, so the name stays editable. Two
+-- players (the same pair split across two entities) use the temporary filter:
+-- both rows stay visible and merging them remains a deliberate action.
+function Browser:ShowPlayers(ids, searchText)
+    if not IRY_Browser or not ids or #ids == 0 then
+        return
+    end
+
+    if IRY_Browser:IsHidden() then
+        self:Show()
+    end
+
+    if state.tab ~= "players" then
+        state.tab = "players"
+        state.page = 1
+        state.selected = nil
+        state.mergeFirst = nil
+        self:CloseDetail()
+    end
+
+    if #ids > 1 then
+        state.search = ""
+        state.page = 1
+        if IRY_BrowserSearchBGEdit then
+            IRY_BrowserSearchBGEdit:SetText("")
+        end
+        -- Assigned after SetText: an OnTextChanged handler would drop the
+        -- focus filter, and it must survive until the rows are drawn.
+        state.focusIds = { ids[1], ids[2] }
+        self:Refresh()
+    else
+        self:SetSearchText(searchText or "")
+    end
+
+    -- Select() does not move the page, so find the row first; otherwise the
+    -- player would be selected on a page that is not shown.
+    local target = ids[1]
+    local pageSize = self:GetPageSize()
+    for index, item in ipairs(state.data) do
+        if item.kind == "player" and item.player.id == target then
+            state.page = math.floor((index - 1) / pageSize) + 1
+            break
+        end
+    end
+
+    self:Select(target, true)
 end
 
 function Browser:TurnPage(delta)
@@ -957,6 +1147,24 @@ function Browser:Hide()
     else
         IRY_Browser:SetHidden(true)
     end
+
+    -- The list can be opened with a filter ("open in IRY"). Clearing it on
+    -- every close keeps the next open predictable: a forgotten filter must not
+    -- look like an empty database. This also applies to the keybind and
+    -- /pa browse, which is intentional. OnHidden also covers Escape, which
+    -- hides the top-level window without calling Hide().
+    self:OnHidden()
+end
+
+function Browser:OnHidden()
+    state.focusIds = nil
+    state.search = ""
+    state.page = 1
+
+    local edit = IRY_BrowserSearchBGEdit
+    if edit and (not edit.GetText or edit:GetText() ~= "") then
+        edit:SetText("")
+    end
 end
 
 function Browser:Toggle()
@@ -1012,16 +1220,25 @@ function Browser:Initialize()
     IRY_BrowserUndo:SetText(IRY.L.BTN_UNDO)
     IRY_BrowserYes:SetText(IRY.L.BTN_YES)
     IRY_BrowserNo:SetText(IRY.L.BTN_NO)
-    IRY_BrowserPurge:SetText(IRY.L.BTN_PURGE)
     IRY_BrowserDetail:SetText(IRY.L.BROWSER_SELECT)
     IRY_BrowserDetailPanelHint:SetText(IRY.L.DETAIL_HINT)
     IRY_BrowserDetailIconPick:SetText(IRY.L.BTN_ICON_PICK)
     IRY_BrowserDetailIconClear:SetText(IRY.L.BTN_ICON_CLEAR)
     IRY_BrowserDetailIconName:SetText(IRY.L.DETAIL_ICON_NONE)
+    IRY_BrowserDetailNotesLabel:SetText(IRY.L.DETAIL_NOTES)
+    IRY_BrowserDetailNotesSave:SetText(IRY.L.BTN_NOTES_SAVE)
+    if IRY_BrowserDetailNotesEdit.SetMaxInputChars then
+        IRY_BrowserDetailNotesEdit:SetMaxInputChars(IRY.MAX_NOTE_LENGTH)
+    end
     IRY_BrowserDetailPanel:SetHidden(true)
 
     -- The browser is a read surface; it should not steal the mouse cursor
     -- until the user opens it on purpose.
+    -- Escape hides the top-level window without going through Hide(), so the
+    -- search reset lives in OnHide.
+    IRY_Browser:SetHandler("OnHide", function()
+        IRY.Browser:OnHidden()
+    end)
     IRY_Browser:SetHidden(true)
 
     -- Registering as a top level window gives us the game's own UI mode and

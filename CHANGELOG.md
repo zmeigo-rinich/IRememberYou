@@ -9,6 +9,65 @@ The version lives in `IRememberYou.txt`; `IRY.version` in
 workflow publishes the zip when `main` is pushed. Add an entry here for every
 user-visible change.
 
+## [0.7.0] - 2026-11-16
+
+### Added
+
+- **Open in IRY** in the context menu of the guild roster, the friends list and
+  the group list. It opens the player list filtered to that player and adds them
+  automatically if they are not remembered yet. The pairing comes from the game's
+  own row, so both identities are known at once.
+- `/pa find <@account|character>` performs the same lookup without the context
+  menu — a fallback for players without the library and a convenient way to test
+  the action.
+- The action never merges two entities. If the clicked account and character
+  already belong to two different players, both rows stay visible, a chat message
+  explains the ambiguity, and merging remains a deliberate step in the browser.
+
+### Changed
+
+- **LibCustomMenu** is now an optional dependency (`## OptionalDependsOn`). It is
+  not bundled. Without it, the guild roster has no menu item and a one-time chat
+  message explains that the feature is unavailable; an outdated library that
+  cannot register the friends or group menus produces a different warning while
+  the guild roster keeps working.
+- The player-list search is cleared every time the window closes, including
+  `Escape`, so an "Open in IRY" filter never looks like an empty database on the
+  next open. This applies to the keybind and `/pa browse` as well.
+- Chat is deliberately not a surface: a chat link exposes only the account or the
+  character, which would create duplicate half-players.
+
+### Notes
+
+- The context-menu action is keyboard and mouse only; gamepad social menus are
+  out of scope.
+
+## [0.6.0] - 2026-11-16
+
+### Added
+
+- A free multi-line **comment** per player in the detail panel, up to 500
+  characters. It is saved on focus loss or with the **Save** button, is included
+  in the player-list search, and protects its player from the retention purge.
+  A merge keeps both comments and undo removes only the merged-in text; a manual
+  edit takes ownership of the whole text so a later undo cannot cut it.
+- `Store:SetNotes` / `Store:GetNotes` and `Util.SanitizeNote`; the `notes` field
+  is repaired on load for old saves, together with its merge provenance
+  (`notesBase`, `notesParts`).
+
+### Changed
+
+- The duplicate **Purge** button was removed from the player list. The settings
+  button and `/pa purge` remain the only ways to forget old players.
+- `Store:Purge` now keeps any player with a comment, not only a custom name.
+
+### Fixed
+
+- The **Open the player list** keybind never fired on non-English clients: the
+  bindings layer used the literal English name `General`. It now uses
+  `SI_KEYBINDINGS_LAYER_GENERAL`, so the binding appears and works in the
+  localized Controls → Keybindings menu.
+
 ## [0.5.1] - 2026-11-14
 
 ### Added

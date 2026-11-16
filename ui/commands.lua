@@ -119,6 +119,42 @@ local function cmdWho(value)
     end
 end
 
+-- Same action as "Open in IRY" in the social menus, available without the
+-- context-menu library and handy for testing. The name is a lookup key:
+-- "@account" or a character name.
+local function cmdFind(value)
+    if not value or value == "" then
+        IRY:Print(IRY.L.USAGE_FIND)
+        return
+    end
+
+    local account, character
+    if value:sub(1, 1) == "@" then
+        account = IRY.Util.NormalizeAccount(value)
+    else
+        character = IRY.Util.NormalizeCharacter(value)
+    end
+
+    if not account and not character then
+        IRY:Print(IRY.L.USAGE_FIND)
+        return
+    end
+
+    local id, action, first, second = IRY.Observer:EnsurePlayer(account, character)
+    if action == "ambiguous" then
+        IRY:Print(string.format(IRY.L.CONTEXT_AMBIGUOUS, tostring(value), first, second))
+        IRY.Browser:ShowPlayers({ first, second })
+        return
+    end
+
+    if not id then
+        IRY:Print(string.format(IRY.L.NOT_FOUND, tostring(value)))
+        return
+    end
+
+    IRY.Browser:ShowPlayers({ id }, tostring(value))
+end
+
 local function cmdList(limitText)
     local list = IRY.Store:List(tonumber(limitText) or 10)
     if #list == 0 then
@@ -584,6 +620,9 @@ local function handle(args)
 
     elseif command == "browse" then
         IRY.Browser:Toggle()
+
+    elseif command == "find" then
+        cmdFind(rest)
 
     elseif command == "debug" then
         cmdDebug(rest)

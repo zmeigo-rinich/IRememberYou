@@ -22,6 +22,7 @@ IRY.L = {
         "  /pa yes [n]              confirm a pending link (default: the first)",
         "  /pa no [n]               reject a pending link",
         "  /pa browse               open the player browser window",
+        "  /pa find <@account|character>  open in the browser, adding the player if needed",
         "  /pa count                number of known players",
         "  /pa purge [days] [confirm]  drop non-custom players last seen longer ago",
         "  /pa icons [on|off]       show or hide every player icon",
@@ -125,6 +126,13 @@ IRY.L = {
     USAGE_RENAME    = "Usage: /pa rename <id> <name>",
     USAGE_FAKE      = "Usage: /pa debug fake <account> <character>",
 
+    -- Context menu / explicit lookup ------------------------------------------
+    USAGE_FIND       = "Usage: /pa find <@account|character>",
+    CONTEXT_OPEN     = "Open in IRY",
+    CONTEXT_AMBIGUOUS = "\"%s\" matches two players (#%d and #%d). Merge them by hand if it is one person.",
+    CONTEXT_NO_LIB   = "LibCustomMenu is not installed: \"Open in IRY\" is unavailable. Install the library to enable it.",
+    CONTEXT_OLD_LIB  = "LibCustomMenu is out of date: \"Open in IRY\" is missing from some social lists. Update the library.",
+
     -- Browser window ----------------------------------------------------------
     BTN_PLAYERS     = "Players",
     BTN_PENDING     = "Pending",
@@ -145,7 +153,6 @@ IRY.L = {
     BROWSER_SELECT  = "Select a row to see its details.",
     BROWSER_MERGE_PROMPT = "merge with #%d: pick the second player, then press Merge again",
     BROWSER_NO_UNDO = "Nothing to undo.",
-    BTN_PURGE       = "Purge",
     BROWSER_SUMMARY = "%d accounts / %d characters",
 
     DETAIL_TITLE    = "#%d  %s",
@@ -154,6 +161,9 @@ IRY.L = {
     DETAIL_NO_ACCOUNTS = "no accounts recorded",
     DETAIL_NO_CHARACTERS = "no characters recorded",
     DETAIL_HINT     = "mouse wheel: scroll through the list",
+    DETAIL_NOTES    = "Comment",
+    BTN_NOTES_SAVE  = "Save",
+    NOTE_SAVE_FAILED = "Could not save the comment for #%d.",
 
     DETAIL_ICON_NONE = "no icon",
     BTN_ICON_PICK   = "Choose icon",
@@ -238,9 +248,9 @@ IRY.L = {
 
     OPT_SEC_MAINT   = "Maintenance",
     OPT_PURGE_DAYS  = "Forget players after, days",
-    OPT_PURGE_DAYS_TIP = "Only players without a custom name are removed. 0 disables automatic cleanup.",
+    OPT_PURGE_DAYS_TIP = "Only players without a custom name or a comment are removed. 0 disables automatic cleanup.",
     OPT_PURGE_NOW   = "Forget old players now",
-    OPT_PURGE_NOW_TIP = "Applies the retention period above. Nothing is deleted until you confirm with a typed word in chat.",
+    OPT_PURGE_NOW_TIP = "Applies the retention period above. Players with a custom name or a comment are kept. Nothing is deleted until you confirm with a typed word in chat.",
     OPT_DEBUG       = "Debug output",
     OPT_DEBUG_TIP   = "Prints extra lines to chat. Same as /pa debug on.",
     PURGE_DISABLED  = "Set the retention period to more than 0 days first.",

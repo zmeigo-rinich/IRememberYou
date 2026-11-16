@@ -193,8 +193,43 @@
 
             <Control name="IRY_BrowserDetailPanelLines">
               <Anchor point="TOPLEFT" offsetX="10" offsetY="124" />
-              <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-28" />
+              <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-140" />
             </Control>
+
+            <!-- The comment block sits below the scrollable account/character
+                 lists, so it never scrolls out of reach. It is part of the
+                 fixed detail panel: only the lists above it scroll. -->
+            <Label name="IRY_BrowserDetailNotesLabel" font="ZoFontGameSmall" color="CFDCBD">
+              <Anchor point="BOTTOMLEFT" offsetX="10" offsetY="-110" />
+              <Dimensions x="150" y="16" />
+            </Label>
+
+            <Button name="IRY_BrowserDetailNotesSave" inherits="ZO_DefaultButton">
+              <Dimensions x="110" y="24" />
+              <Anchor point="BOTTOMRIGHT" offsetX="-10" offsetY="-110" />
+              <OnClicked>
+                IRY.Browser:CommitNotes()
+              </OnClicked>
+            </Button>
+
+            <Backdrop name="IRY_BrowserDetailNotesBG" inherits="ZO_EditBackdrop">
+              <Dimensions x="300" y="76" />
+              <Anchor point="BOTTOMLEFT" offsetX="10" offsetY="-28" />
+              <Controls>
+                <EditBox name="IRY_BrowserDetailNotesEdit" font="ZoFontGameSmall"
+                         inherits="ZO_DefaultEditMultiLineForBackdrop"
+                         multiLine="true" newLineEnabled="true" maxInputCharacters="500">
+                  <Anchor point="TOPLEFT" offsetX="4" offsetY="4" />
+                  <Anchor point="BOTTOMRIGHT" offsetX="-4" offsetY="-4" />
+                  <OnFocusGained>
+                    IRY.Browser:OnNotesFocusGained()
+                  </OnFocusGained>
+                  <OnFocusLost>
+                    IRY.Browser:OnNotesFocusLost()
+                  </OnFocusLost>
+                </EditBox>
+              </Controls>
+            </Backdrop>
 
             <Label name="IRY_BrowserDetailPanelHint" font="ZoFontGameSmall" color="7F7F7F" wrapMode="ELLIPSIS">
               <Anchor point="BOTTOMLEFT" offsetX="10" offsetY="-8" />
@@ -293,14 +328,6 @@
               <Anchor point="TOPLEFT" offsetX="56" offsetY="64" />
               <Dimensions x="200" y="18" />
             </Label>
-
-            <Button name="IRY_BrowserPurge" inherits="ZO_DefaultButton">
-              <Dimensions x="100" y="24" />
-              <Anchor point="TOPLEFT" offsetX="272" offsetY="60" />
-              <OnClicked>
-                IRY.Browser:PurgeOld()
-              </OnClicked>
-            </Button>
 
             <Button name="IRY_BrowserNext" inherits="ZO_DefaultButton" text="&gt;">
               <Dimensions x="40" y="24" />

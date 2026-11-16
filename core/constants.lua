@@ -14,7 +14,7 @@ IRY = IRY or {}
 
 IRY.name      = ADDON_NAME
 IRY.title     = ADDON_TITLE
-IRY.version   = "0.5.1"
+IRY.version   = "0.7.0"
 IRY.author    = "I remember you! contributors"
 IRY.svName    = SV_NAME
 IRY.svVersion = SV_VERSION
@@ -27,6 +27,10 @@ IRY.SOURCE = {
     GUILD    = "guild",
     KILLFEED = "killfeed",
     MANUAL   = "manual",
+    -- An explicit "open in IRY" action from a social list. The pairing comes
+    -- from the game's own row, so it is confirmed, but the user action never
+    -- merges two entities: Observer:EnsurePlayer only creates or enriches.
+    CONTEXT  = "context",
 }
 
 -- How sure we are that an alias belongs to a player entity.
@@ -41,12 +45,16 @@ IRY.SOURCE_PRIORITY = {
     [IRY.SOURCE.TARGET]   = 1,
     [IRY.SOURCE.KILLFEED] = 1,
     [IRY.SOURCE.GUILD]    = 2,
+    [IRY.SOURCE.CONTEXT]  = 2,
     [IRY.SOURCE.GROUP]    = 3,
     [IRY.SOURCE.FRIEND]   = 3,
     [IRY.SOURCE.MANUAL]   = 4,
 }
 
 IRY.MAX_DISPLAY_NAME = 32
+-- A player comment is free text. The limit keeps a SavedVariables entry small
+-- and the detail panel readable; the cut is UTF-8 safe.
+IRY.MAX_NOTE_LENGTH = 500
 IRY.MSG_PREFIX = "|c7FBF7F[" .. ADDON_TITLE .. "]|r "
 
 -- Player icons ---------------------------------------------------------------

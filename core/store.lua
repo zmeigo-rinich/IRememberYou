@@ -52,7 +52,7 @@ local function confidenceForSource(source)
     if source == IRY.SOURCE.MANUAL then
         return IRY.CONFIDENCE.MANUAL
     end
-    if source == IRY.SOURCE.FRIEND then
+    if source == IRY.SOURCE.FRIEND or source == IRY.SOURCE.CONTEXT then
         return IRY.CONFIDENCE.CONFIRMED
     end
     return IRY.CONFIDENCE.PROBABLE
@@ -69,6 +69,65 @@ local function sortedKeys(map)
     end
     table.sort(keys)
     return keys
+end
+
+-- Comments survive a merge, and undo must put them back exactly. The
+-- survivor's own text is the base; every merged-in entity contributes one
+-- part keyed by its id. A manual edit adopts the current text as the new base
+-- and drops the parts, so a later undo cannot cut a comment the user wrote by
+-- hand.
+local function rebuildNotes(player)
+    local parts = {}
+    if player.notesBase and player.notesBase ~= "" then
+        parts[#parts + 1] = player.notesBase
+    end
+    for _, part in ipairs(player.notesParts or {}) do
+        if part.text and part.text ~= "" then
+            parts[#parts + 1] = part.text
+        end
+    end
+    player.notes = table.concat(parts, "\n")
+end
+
+local function appendMergedNotes(player, srcId, text)
+    if not text or text == "" then
+        return
+    end
+
+    if player.notesBase == nil then
+        player.notesBase = player.notes or ""
+    end
+
+    player.notesParts = player.notesParts or {}
+    for _, part in ipairs(player.notesParts) do
+        if part.id == srcId then
+            return
+        end
+    end
+
+    player.notesParts[#player.notesParts + 1] = { id = srcId, text = text }
+    rebuildNotes(player)
+end
+
+local function removeMergedNotes(player, srcId)
+    if not player.notesParts then
+        return
+    end
+
+    local kept = {}
+    for _, part in ipairs(player.notesParts) do
+        if part.id ~= srcId then
+            kept[#kept + 1] = part
+        end
+    end
+
+    player.notesParts = (#kept > 0) and kept or nil
+    if player.notesParts then
+        rebuildNotes(player)
+    else
+        player.notes = player.notesBase or ""
+        player.notesBase = nil
+    end
 end
 
 -- First-install seed -----------------------------------------------------------
@@ -123,6 +182,20 @@ function Store:EnsureSchema()
     for key, value in pairs(IRY.SettingsDefaults) do
         if sv.settings[key] == nil then
             sv.settings[key] = value
+        end
+    end
+
+    -- `notes` was part of the schema before it had a UI; old saves may still
+    -- miss it, and a malformed merge provenance must never break a load.
+    for _, player in pairs(sv.players) do
+        if player.notes == nil then
+            player.notes = ""
+        end
+        if player.notesBase ~= nil and type(player.notesBase) ~= "string" then
+            player.notesBase = nil
+        end
+        if player.notesParts ~= nil and type(player.notesParts) ~= "table" then
+            player.notesParts = nil
         end
     end
 end
@@ -487,13 +560,7 @@ function Store:Merge(srcId, dstId, reason)
         dst.iconFrom = srcId
     end
 
-    if src.notes and src.notes ~= "" then
-        if dst.notes and dst.notes ~= "" then
-            dst.notes = dst.notes .. "\n" .. src.notes
-        else
-            dst.notes = src.notes
-        end
-    end
+    appendMergedNotes(dst, srcId, src.notes)
 
     src.mergedInto = dstId
     src.mergedAt = now()
@@ -547,6 +614,8 @@ function Store:UndoMerge(srcId)
         nextChild.iconFrom = nil
         child = nextChild
     end
+
+    removeMergedNotes(dst, srcId)
 
     src.mergedInto = nil
     src.mergedAt = nil
@@ -613,6 +682,30 @@ function Store:ResetDisplayName(id)
     player.updatedAt = now()
 
     return true, player.displayName
+end
+
+-- A player comment is edited as a whole. Taking manual ownership of the text
+-- deliberately drops the merge provenance: from then on undo must not remove
+-- a line the user may have rewritten.
+function Store:SetNotes(id, text)
+    id = self:ResolveFinal(id)
+    local player = id and sv.players[id]
+    if not player then
+        return false, "not-found"
+    end
+
+    player.notes = IRY.Util.SanitizeNote(text)
+    player.notesBase = nil
+    player.notesParts = nil
+    player.updatedAt = now()
+
+    return true, player.notes
+end
+
+function Store:GetNotes(id)
+    id = self:ResolveFinal(id)
+    local player = id and sv.players[id]
+    return player and player.notes or ""
 end
 
 -- Icons ----------------------------------------------------------------------
@@ -851,7 +944,8 @@ function Store:Purge(days)
     local removed = 0
 
     for id, player in pairs(sv.players) do
-        if not player.mergedInto and not player.isCustom then
+        if not player.mergedInto and not player.isCustom
+            and (not player.notes or player.notes == "") then
             local newest = 0
             for _, alias in pairs(player.aliases or {}) do
                 newest = math.max(newest, alias.lastSeen or 0)

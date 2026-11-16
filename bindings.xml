@@ -1,5 +1,5 @@
 <Bindings>
-  <Layer name="General">
+  <Layer name="SI_KEYBINDINGS_LAYER_GENERAL">
     <Category name="I remember you!">
       <Action name="IRY_TOGGLE_BROWSER">
         <Down>IRY.Browser:Toggle()</Down>

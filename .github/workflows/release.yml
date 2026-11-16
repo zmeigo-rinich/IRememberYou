@@ -10,10 +10,9 @@ permissions:
   contents: write
 
 env:
-  # The 0.5 line is published as a beta. The release is created as a GitHub
-  # pre-release and the title gets a "beta" suffix. Set to "false" when the
-  # version is bumped for the final release.
-  RELEASE_PRERELEASE: "true"
+  # "true" publishes the release as a GitHub pre-release with a beta banner in
+  # the notes. Set to "false" for a final release; nothing else needs editing.
+  RELEASE_PRERELEASE: "false"
 
 concurrency:
   group: release
@@ -108,24 +107,34 @@ jobs:
           tag="${{ steps.version.outputs.tag }}"
           prerelease_flag=""
           title_suffix=""
+          beta_note=""
           if [ "$RELEASE_PRERELEASE" = "true" ]; then
             prerelease_flag="--prerelease"
             title_suffix=" beta"
+            beta_note="> **Beta / Бета:** предварительная сборка для тестирования. Замечания будут исправлены в следующем релизе."
           fi
           cat > notes.md <<EOF
           ## IRememberYou ${version}${title_suffix}
 
-          > **Beta / Бета:** предварительная сборка для тестирования. Замечания будут исправлены в следующем релизе.
+          ${beta_note}
 
           Аддон для The Elder Scrolls Online, который помнит игроков после смены @аккаунта и имени персонажа.
 
-          **Что нового в ${version} / What's new in ${version}:** шесть новых иконок в библиотеке — `doge-smile`, `horse`, `imperial-soldier`, `risitas-form`, `templar` и `zmeigorinich` (81 иконка в базовом пакете). Полный список изменений — в [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md).
+          **Что нового в ${version} / What's new in ${version}:**
+          - **«Открыть в IRY»** в контекстных меню состава гильдии, друзей и группы: открывает список с фильтром на игрока и добавляет его, если он ещё не запомнен. Требуется **LibCustomMenu**; без неё остальное работает как раньше, а аддон один раз предупреждает.
+          - **\`/pa find <@аккаунт|персонаж>\`** — тот же поиск без библиотеки.
+          - Действие никогда не объединяет две записи: при конфликте показываются обе строки и объяснение в чате.
+          - **Комментарий к игроку** в панели подробностей: многострочная заметка до 500 символов, сохраняется при потере фокуса или кнопкой, участвует в поиске и защищает от очистки по сроку хранения.
+          - Поиск в списке очищается при каждом закрытии, включая \`Escape\`.
+          - Клавиша **«Открыть список игроков»** теперь работает и на русском клиенте.
 
-          **Необязательные зависимости / Optional dependencies:** LibAddonMenu-2.0 — панель настроек; OdySupportIcons — 3D-иконки над участниками группы и иконки игроков в списке группы. Остальное, включая пины на карте и подписи с запомненным именем, работает без них.
+          Полный список изменений — в [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md).
 
-          **Установка:** скачать архив \`IRememberYou_v${version}.zip\`, распаковать в папку AddOns, при желании поставить LibAddonMenu-2.0, выполнить \`/reloadui\`.
+          **Необязательные зависимости / Optional dependencies:** LibAddonMenu-2.0 — панель настроек; LibCustomMenu — пункт «Открыть в IRY» в социальных меню (для друзей и группы нужна версия 7.2+); OdySupportIcons — 3D-иконки над участниками группы и иконки игроков в списке группы. Остальное, включая пины на карте и подписи с запомненным именем, работает без них.
 
-          **Install:** download \`IRememberYou_v${version}.zip\`, unpack it into the AddOns folder, optionally install LibAddonMenu-2.0, run \`/reloadui\`.
+          **Установка:** скачать архив \`IRememberYou_v${version}.zip\`, распаковать в папку AddOns, при желании поставить LibAddonMenu-2.0 и LibCustomMenu, выполнить \`/reloadui\`.
+
+          **Install:** download \`IRememberYou_v${version}.zip\`, unpack it into the AddOns folder, optionally install LibAddonMenu-2.0 and LibCustomMenu, run \`/reloadui\`.
 
           Полная инструкция / full guide: [README.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.md) · [README.ru.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/README.ru.md) · [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)
           EOF

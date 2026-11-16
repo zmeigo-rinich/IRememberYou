@@ -60,10 +60,12 @@ other window keep the game's own naming.
 3. Type `/reloadui`.
 
 No required dependencies. **LibAddonMenu-2.0** adds the settings panel; without
-it everything still works through slash commands. **OdySupportIcons** is
-optional and is the only source of the 3D icons above group members and of the
-player icon in the Group Finder's group list; this addon's own 2D icons, map pins
-and remembered-name suffixes work without it.
+it everything still works through slash commands. **LibCustomMenu** adds the
+**Open in IRY** item to the social context menus (guild roster, friends, group);
+without it that item is absent and the addon tells you so once per session.
+**OdySupportIcons** is optional and is the only source of the 3D icons above
+group members and of the player icon in the Group Finder's group list; this
+addon's own 2D icons, map pins and remembered-name suffixes work without it.
 
 ---
 
@@ -72,8 +74,8 @@ and remembered-name suffixes work without it.
 The list is where you see and edit everything the addon learned:
 
 * **Settings → Addons → I remember you! → “Open the player list”**;
-* or bind a key: **Controls → General → I remember you! → Open the player list**
-  (unbound by default);
+* or bind a key: **Controls → Keybindings → General → I remember you! → Open
+  the player list** (unbound by default);
 * or type **`/pa browse`**.
 
 In the list you can:
@@ -83,6 +85,9 @@ In the list you can:
   many rows as fit, so a taller window means more players per page;
 * click a player to open the **detail panel**: every remembered `@account` with
   when it was last seen, and every character with its alliance and level;
+* keep a **comment** on a player: a free multi-line note under the account and
+  character lists (up to 500 characters). It is saved on focus loss or with the
+  **Save** button and is included in the list search;
 * rename a player to whatever you like (Enter or the button);
 * reset the name back to the first remembered `@account`;
 * merge two rows that are actually one person (pick the first, pick the second,
@@ -92,10 +97,36 @@ In the list you can:
 * forget players whose retention period has expired.
 
 The detail panel is a single window: clicking another player replaces its
-contents, switching tabs or closing the list closes it. Scroll it with the mouse
-wheel.
+contents, switching tabs or closing the list closes it. Scroll the account and
+character lists with the mouse wheel; the comment box below them stays in place.
+A comment protects its player from the retention purge even without a custom
+name.
 
-`Escape` closes the window. Its position **and size** are remembered.
+`Escape` closes the window. Its position **and size** are remembered. The search
+box is cleared on every close, so a filtered open never hides the rest of the
+list next time.
+
+---
+
+## Open in IRY from a social list
+
+Right-click a player in the **guild roster**, the **friends list** or the
+**group list** and choose **Open in IRY**. The item is added by
+**LibCustomMenu**; without the library it does not appear.
+
+The addon opens the player list filtered to that player. If the player is not
+remembered yet, it is added first, using the account and character from the
+same row. The action only creates or enriches one player — it never merges two
+entities. If the account and the character from the row already belong to two
+different players, both rows are shown and a chat message tells you why; merging
+them stays a deliberate step.
+
+Chat is not a surface: a chat link carries only the `@account` or the character
+name, so adding from chat would create duplicate half-players.
+
+Without the library, or with an outdated one that cannot register the friends
+or group menus, the addon prints a one-time warning. The guild roster keeps its
+item whenever the library is present.
 
 ---
 
@@ -106,6 +137,7 @@ All commands start with `/pa` (alias `/iry`).
 | Command | What it does |
 | --- | --- |
 | `/pa browse` | open the player list |
+| `/pa find <@account\|character>` | open in the list, adding the player if needed |
 | `/pa who [name\|id]` | show one player in detail (no argument: current target) |
 | `/pa list [n]` | list known players |
 | `/pa count` | how many players are remembered |
@@ -163,7 +195,7 @@ a record. You can change that with “Accept probable links without asking”.
   installed.
 * **Maintenance** — retention period (`0` = never forget), a “forget old players
   now” button (it only previews until you confirm with a typed word in chat),
-  and debug output.
+  and debug output. Players with a custom name or a comment are never purged.
 
 Defaults keep all display features on, accept nothing silently, and never
 delete anything by itself.
@@ -216,6 +248,10 @@ delete anything by itself.
   addon still tries to work; check for a newer release.
 * **No settings panel** — LibAddonMenu-2.0 is not installed. Use the slash
   commands instead.
+* **No “Open in IRY” item in the social menus** — LibCustomMenu is missing or
+  too old. The addon prints a one-time warning; the guild roster keeps working
+  with an older library, friends and group need an update. `/pa find` works
+  without the library.
 * **No player icon in the Group Finder's group list** — that icon is drawn by
   OdySupportIcons, not by this addon. The remembered-name suffix works without
   it; check OSI's group-window icon options.
@@ -223,6 +259,10 @@ delete anything by itself.
   row and use **Reset**, or `/pa undo` the merge the addon made.
 * **You are in the list yourself** — from 0.2.1 on the addon ignores you. An old
   row is not deleted automatically: remove it with `/pa forget <id>`.
+* **The key does not open the list** — assign it in **Controls → Keybindings →
+  General → I remember you!**. A key bound in an older version (before 0.6.0)
+  never fired on non-English clients; update the addon, rebind the key and
+  `/reloadui`.
 * **The reticle marker floats beside the head** — it is a fixed screen picture, not
   a 3D icon. Check “Move the marker”, drag it to where you expect it at
   your usual fighting distance, then clear the checkbox.
@@ -235,6 +275,28 @@ delete anything by itself.
 ---
 
 ## Changelog
+
+**0.7.0**
+* **Open in IRY** in the guild roster, friends list and group list context
+  menus: opens the list filtered to that player and adds them if needed
+  (needs **LibCustomMenu**; a one-time warning explains a missing or outdated
+  library);
+* `/pa find <@account|character>` as a library-free fallback;
+* the action never merges two rows — if the account and character are already
+  split across two players, both are shown and explained in chat;
+* the player-list search is cleared on every close, including `Escape`, so a
+  filtered open never hides the list next time;
+* chat is not a source for the action: a chat link has only one of the two
+  identities and would create duplicates.
+
+**0.6.0**
+* a free multi-line **comment** per player in the detail panel, up to 500
+  characters, saved on focus loss or with the Save button and included in the
+  list search; a comment protects its player from the retention purge;
+* the duplicate **Purge** button was removed from the player list — use the
+  settings button or `/pa purge`;
+* the **Open the player list** keybind now appears and works on non-English
+  clients (it was registered under a hard-coded English layer name).
 
 **0.5.1**
 * six new icons in the shipped library: `doge-smile`, `horse`,

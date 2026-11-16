@@ -45,6 +45,7 @@ local function onAddOnLoaded(_, addOnName)
     IRY.Social:Initialize()
     IRY.IconPicker:Initialize()
     IRY.Browser:Initialize()
+    IRY.ContextMenu:Initialize()
     IRY.Settings:Initialize()
 
     checkApiVersion()

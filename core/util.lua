@@ -104,6 +104,26 @@ function Util.SanitizeDisplayName(value)
     return utf8SafeSub(text, IRY.MAX_DISPLAY_NAME)
 end
 
+-- Free-form player comment. Unlike a display name it may contain line breaks,
+-- but markup and control characters are still removed: the same text is
+-- printed to chat by /pa who.
+function Util.SanitizeNote(value)
+    if type(value) ~= "string" then
+        return ""
+    end
+
+    local text = value:gsub("\r\n", "\n"):gsub("\r", "\n")
+    text = text:gsub("%z", "")
+    text = text:gsub("[|<>\t]", " ")
+    text = text:gsub("%^", "")
+    text = text:gsub(" +\n", "\n")
+    text = text:gsub("\n +", "\n")
+    text = text:gsub("\n\n\n+", "\n\n")
+    text = trim(text)
+
+    return utf8SafeSub(text, IRY.MAX_NOTE_LENGTH)
+end
+
 function Util.SameName(a, b)
     if not a or not b then
         return false
