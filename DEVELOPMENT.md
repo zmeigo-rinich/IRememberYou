@@ -494,6 +494,14 @@ pack is the second namespace: 82 textures from the game's own UI art (the same
 list LoreFriendlySupportIcons registers with OSI), so it costs no download
 space and cannot break when another addon is removed.
 
+**Picker.** `ui/iconpicker.lua` owns a fixed 8 × 5 grid of `IRY_IconTile`
+buttons created once in `Initialize`; `Render` fills one page from
+`Icons:AllPaths`. Tiles are painted only after the window is shown: `Open`
+shows the picker first and calls `Render` afterwards, and an `OnShow` handler
+repaints if the scene manager shows the window on its own schedule. A texture
+applied while a never-shown top-level window is still hidden can arrive as an
+empty square, so the ordering is deliberate.
+
 **Assigning.** `player.icon` is the single write target; `Store:SetIcon` and
 `Store:ClearIcon` validate the path, and both clear `iconFrom`. During a merge
 the destination inherits `src.icon` with `dst.iconFrom = srcId`, so undo can walk
@@ -709,15 +717,15 @@ churn. Only the rows that fit into the current height are filled and shown.
 virtual templates: `IRY_BrowserRow` (`Id`, `Name`, `Meta`, `Seen` labels and a
 hidden `Highlight` backdrop) and `IRY_DetailLine` (`Name`, `Meta`).
 
-Default size is **660 × 680**; constraints are **660 × 420** minimum and
+Default size is **760 × 680**; constraints are **760 × 420** minimum and
 **1600 × 1200** maximum. Rows are anchored `TOPLEFT 124` / `BOTTOMRIGHT -112`, so
 they stretch with the window. The footer is a 96 px control anchored to the
 bottom edge; its children use their own top-left offsets.
 
 Groups of controls:
 
-* header: `Title`, `Close`, `SearchBGEdit`, `TabPlayers`, `TabPending`, `Count`,
-  `HeadId/Name/Meta/Seen`;
+* header: `Title`, `Close`, `SearchBGEdit`, `TabPlayers`, `TabPending`,
+  `FilterRenamed`, `FilterIcons`, `Count`, `HeadId/Name/Meta/Seen`;
 * list: `Rows` and the 40 generated `IRY_BrowserRowN`;
 * footer: `Detail` summary label, `RenameBGEdit`, `Rename`, `Reset`, `Merge`,
   `Undo`, `Yes`, `No`, `Prev`, `PageLabel`, `Next` (the duplicate purge button
@@ -725,6 +733,13 @@ Groups of controls:
 * detail panel: `IRY_BrowserDetailPanel` with `…Title`, `…Lines` (holds the
   generated `IRY_DetailLineN`), `…Hint`, `…Close`, `…BG`, and the fixed comment
   block `…NotesLabel`, `…NotesSave`, `…NotesBG` / `…NotesEdit`.
+
+The two view-filter buttons share the search row and are pinned to the right
+edge: search 200 px at the 760 px minimum width, then `FilterRenamed` 284 px and
+`FilterIcons` 228 px with 8 px gaps and 16 px margins. The search box is anchored
+between the left edge and the renamed button, so it grows when the window is
+widened. Their labels switch to `ZoFontGameSmall` in `Initialize`, because the
+full Russian captions do not fit at the default button font.
 
 Footer buttons and detail-panel children have explicit global names instead of
 `$(parent)…`. The page-size check script in the release notes assumes
@@ -734,7 +749,7 @@ Footer buttons and detail-panel children have explicit global names instead of
 
 ```lua
 state = {
-  tab, page, search, selected, mergeFirst, data,
+  tab, page, search, focusIds, filter, selected, mergeFirst, data,
   left, top, width, height, rowsPerPage,
   detailOpen, detailPlayerId, detailOffset, detailVisible, detailItems,
   detailNotesPlayerId, detailNotesFocused,
@@ -745,7 +760,10 @@ state = {
   `{ kind = "pending", entry = ... }`, rebuilt on every `Refresh`.
 * `Collect` filters: lower-case substring over display name, every account key
   and every character; a leading `@` in the query is stripped because accounts
-  are stored undecorated. Players keep `Store:List` order (newest first);
+  are stored undecorated. `filter` is `nil`, `"renamed"` (players with
+  `player.isCustom`) or `"icons"` (players with a manually assigned
+  `player.icon`), while the temporary `focusIds` set bypasses both the text
+  search and the view filter. Players keep `Store:List` order (newest first);
   pending entries are sorted by id.
 * `selected` is a player id on the players tab and a pending id on the pending
   tab. The counters are independent — never look a pending id up as a player.
@@ -776,6 +794,13 @@ state = {
 * `Purge` was removed from the browser in 0.6.0; the settings button and
   `/pa purge` still call `IRY:PurgeOldPlayers()`.
 * Mouse wheel pages (`TurnPage(-delta)`); Prev/Next buttons do the same.
+* `SetFilter` keeps the two view filters mutually exclusive: clicking the
+  active one clears `state.filter`, clicking the other switches to it. Both
+  `ToggleRenamedFilter` and `ToggleIconFilter` are thin wrappers; `Refresh`
+  hides the buttons on the pending tab and paints the active label green. The
+  page resets and `focusIds` is dropped. `ShowPlayers` clears the filter before
+  an explicit lookup and `OnHidden` clears it on every close, including
+  `Escape`. It is never written to settings.
 * Geometry is saved on `OnMoveStop` **and** `OnResizeStop` into
   `settings.browserLeft/browserTop/browserWidth/browserHeight` (deliberately not
   part of the defaults; `nil` means "centred, default size"). `Show` clamps the
@@ -1139,6 +1164,20 @@ Before a release, in a live client:
     `/pa browse` and `/pa find`.
 31. Reload persistence: add a player via Open in IRY, `/reloadui`, and confirm
     the row, its `context` provenance and its comment survive.
+32. View filters: rename one player, give another a manual icon, open the list
+    and press **Show renamed players** — only custom names remain and the button
+    turns green. Press **Show players with icons** — the renamed button is white
+    again, only players with a manual icon remain (a blacklist marker and a
+    merged tombstone must not count). Press it again to restore everyone. With
+    either filter on, run `/pa find` for a player without it: the lookup clears
+    the filter and shows that player. Close with `Escape` while a filter is on
+    and reopen — the full list is back. The Pending tab has no filter buttons.
+    The window opens 760 px wide by default; both captions must fit without
+    clipping in English and Russian.
+33. Icon picker: right after `/reloadui`, open **Choose icon** in the detail
+    panel and the blacklist icon in the settings panel. Every tile must show its
+    picture on the first open, not only after paging; reopening it several times
+    must never produce a grid of empty squares.
 
 Items that are not yet verified in a live client (treat as first suspects if
 something looks wrong): `GetAPIVersion()` versus the manifest's
