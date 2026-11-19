@@ -142,6 +142,8 @@ IRY.L = {
     BTN_UNDO        = "Undo",
     BTN_YES         = "Yes",
     BTN_NO          = "No",
+    BTN_FILTER_RENAMED = "Show renamed players",
+    BTN_FILTER_ICONS = "Show players with icons",
 
     HEADER_ID       = "#",
     HEADER_NAME     = "Name",

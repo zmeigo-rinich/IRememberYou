@@ -97,8 +97,10 @@ function IconPicker:Open(target)
     state.page = 1
 
     self:BuildTiles()
-    self:Render()
 
+    -- Show first, then paint. The game does not load textures for a window that
+    -- has never been visible, so a picker rendered while hidden could come up
+    -- as a grid of empty squares until the next page turn forced a redraw.
     if usesTopLevel then
         SCENE_MANAGER:ShowTopLevel(IRY_IconPicker)
     else
@@ -108,6 +110,8 @@ function IconPicker:Open(target)
     if IRY_IconPicker.BringWindowToTop then
         IRY_IconPicker:BringWindowToTop()
     end
+
+    self:Render()
 end
 
 function IconPicker:OpenPlayer(playerId)
@@ -170,6 +174,15 @@ function IconPicker:Initialize()
     IRY_IconPickerEmpty:SetText(IRY.L.PICKER_EMPTY)
     IRY_IconPickerPageLabel:SetText(string.format(IRY.L.PICKER_PAGE, 1, 1))
     IRY_IconPicker:SetHidden(true)
+
+    -- Repaint whenever the window becomes visible, even if the scene manager
+    -- shows it later than Open() asked: the texture pass is only reliable on a
+    -- visible window.
+    IRY_IconPicker:SetHandler("OnShow", function()
+        if state.target then
+            IRY.IconPicker:Render()
+        end
+    end)
 
     usesTopLevel = SCENE_MANAGER ~= nil and SCENE_MANAGER.RegisterTopLevel ~= nil
     if usesTopLevel then

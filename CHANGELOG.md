@@ -9,6 +9,26 @@ The version lives in `IRememberYou.txt`; `IRY.version` in
 workflow publishes the zip when `main` is pushed. Add an entry here for every
 user-visible change.
 
+## [0.8.0] - 2026-11-19
+
+### Added
+
+- Two view filter buttons in the player list header: **Show renamed players**
+  narrows the list to players with a user-assigned name, and **Show players with
+  icons** to players with a manually assigned icon (automatic blacklist markers
+  do not count). At most one is active; clicking the active button shows
+  everyone again. They are view state, not settings: both are reset when the
+  window closes, and an explicit **Open in IRY** or `/pa find` lookup drops them
+  so the requested player is never hidden. The default window width grows to
+  760 px so both captions fit next to the search box.
+
+### Fixed
+
+- The icon picker could open as a grid of empty squares. Tiles are now painted
+  after the window is shown, and the picker repaints whenever the scene manager
+  shows it; textures applied to a window that has never been visible may not
+  load.
+
 ## [0.7.0] - 2026-11-16
 
 ### Added

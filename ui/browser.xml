@@ -51,7 +51,7 @@
     </Control>
 
     <TopLevelControl name="IRY_Browser" hidden="true" movable="true" clampedToScreen="true" mouseEnabled="true" resizeHandleSize="16">
-      <Dimensions x="660" y="680" />
+      <Dimensions x="760" y="680" />
       <Anchor point="CENTER" />
 
       <OnMoveStop>
@@ -80,9 +80,33 @@
           </OnClicked>
         </Button>
 
+        <!-- Two view filters share the search row and stay pinned to the right
+             edge; the search box grows into the free space when the window is
+             widened. They are not settings: they are dropped when the window
+             closes and never hide an explicit "Open in IRY" lookup. At most one
+             is active, or both are off. The active button turns green. The
+             captions are set in ui/browser.lua and use ZoFontGameSmall so both
+             fit on the row in every locale. -->
+        <Button name="IRY_BrowserFilterIcons" inherits="ZO_DefaultButton">
+          <Dimensions x="228" y="28" />
+          <Anchor point="TOPRIGHT" offsetX="-16" offsetY="36" />
+          <OnClicked>
+            IRY.Browser:ToggleIconFilter()
+          </OnClicked>
+        </Button>
+
+        <Button name="IRY_BrowserFilterRenamed" inherits="ZO_DefaultButton">
+          <Dimensions x="284" y="28" />
+          <Anchor point="TOPRIGHT" relativeTo="IRY_BrowserFilterIcons" relativePoint="TOPLEFT" offsetX="-8" offsetY="0" />
+          <OnClicked>
+            IRY.Browser:ToggleRenamedFilter()
+          </OnClicked>
+        </Button>
+
         <Backdrop name="$(parent)SearchBG" inherits="ZO_EditBackdrop">
-          <Dimensions x="380" y="28" />
+          <Dimensions x="200" y="28" />
           <Anchor point="TOPLEFT" offsetX="16" offsetY="36" />
+          <Anchor point="TOPRIGHT" relativeTo="IRY_BrowserFilterRenamed" relativePoint="TOPLEFT" offsetX="-8" offsetY="0" />
           <Controls>
             <EditBox name="$(parent)Edit" inherits="ZO_DefaultEditForBackdrop">
               <OnTextChanged>

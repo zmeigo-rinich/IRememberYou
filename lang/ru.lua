@@ -142,6 +142,8 @@ if ok and language == "ru" then
         BTN_UNDO        = "Отменить",
         BTN_YES         = "Да",
         BTN_NO          = "Нет",
+        BTN_FILTER_RENAMED = "Показать переименованных игроков",
+        BTN_FILTER_ICONS = "Показать игроков с иконками",
 
         HEADER_ID       = "#",
         HEADER_NAME     = "Имя",

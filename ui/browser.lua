@@ -21,9 +21,9 @@
 local Browser = {}
 IRY.Browser = Browser
 
-local DEFAULT_WIDTH  = 660
+local DEFAULT_WIDTH  = 760
 local DEFAULT_HEIGHT = 680
-local MIN_WIDTH      = 660
+local MIN_WIDTH      = 760
 local MIN_HEIGHT     = 420
 local MAX_WIDTH      = 1600
 local MAX_HEIGHT     = 1200
@@ -50,6 +50,7 @@ local state = {
     page       = 1,
     search     = "",
     focusIds   = nil,       -- temporary filter set by the context-menu action
+    filter     = nil,       -- view filter: nil, "renamed" or "icons"
     selected   = nil,       -- player id (players tab) or pending id
     mergeFirst = nil,       -- first id picked for a merge
     data       = {},
@@ -191,7 +192,17 @@ function Browser:Collect()
     end
 
     for _, player in ipairs(IRY.Store:List()) do
-        if matches(player, needle) then
+        local keep = true
+        if state.filter == "renamed" then
+            -- A user-assigned name, not an automatic blacklist marker.
+            keep = player.isCustom == true
+        elseif state.filter == "icons" then
+            -- Only a manually assigned icon counts; blacklist markers live
+            -- elsewhere and are not a user choice.
+            keep = player.icon ~= nil
+        end
+
+        if keep and matches(player, needle) then
             result[#result + 1] = { kind = "player", player = player }
         end
     end
@@ -571,6 +582,28 @@ function Browser:Refresh()
     IRY_BrowserMerge:SetHidden(not isPlayers)
     IRY_BrowserUndo:SetHidden(not isPlayers)
     IRY_BrowserRenameBG:SetHidden(not isPlayers)
+
+    -- The two view filters only exist on the players tab and are mutually
+    -- exclusive: at most one of them is green. A fixed caption keeps both
+    -- buttons readable; the colour, not the text, shows the state.
+    local filters = {
+        { control = IRY_BrowserFilterRenamed, value = "renamed" },
+        { control = IRY_BrowserFilterIcons, value = "icons" },
+    }
+    for _, entry in ipairs(filters) do
+        local button = entry.control
+        if button then
+            button:SetHidden(not isPlayers)
+            local label = button.GetNamedChild and button:GetNamedChild("Label")
+            if label and label.SetColor then
+                if state.filter == entry.value then
+                    label:SetColor(0.49, 0.98, 0.49, 1)
+                else
+                    label:SetColor(1, 1, 1, 1)
+                end
+            end
+        end
+    end
 
     IRY_BrowserYes:SetHidden(isPlayers)
     IRY_BrowserNo:SetHidden(isPlayers)
@@ -974,6 +1007,38 @@ function Browser:SetSearchText(text)
     self:Refresh()
 end
 
+-- Ephemeral view filter: at most one is active, or both are off. It is not a
+-- saved setting and it must never hide an explicit lookup, so ShowPlayers
+-- clears it. Clicking the active filter turns it off; clicking the other one
+-- switches to it.
+function Browser:SetFilter(filter)
+    if state.tab ~= "players" then
+        return
+    end
+
+    if filter ~= "renamed" and filter ~= "icons" then
+        filter = nil
+    end
+    if state.filter == filter then
+        filter = nil
+    end
+
+    state.filter = filter
+    state.page = 1
+    -- The button is an explicit filter, just like typing: the temporary
+    -- context-menu focus has done its job.
+    state.focusIds = nil
+    self:Refresh()
+end
+
+function Browser:ToggleRenamedFilter()
+    self:SetFilter("renamed")
+end
+
+function Browser:ToggleIconFilter()
+    self:SetFilter("icons")
+end
+
 -- Open the list on one or two known players.
 -- One player goes through the search box, so the name stays editable. Two
 -- players (the same pair split across two entities) use the temporary filter:
@@ -994,6 +1059,10 @@ function Browser:ShowPlayers(ids, searchText)
         state.mergeFirst = nil
         self:CloseDetail()
     end
+
+    -- An explicit lookup always shows the requested player, whatever the
+    -- view filter was.
+    state.filter = nil
 
     if #ids > 1 then
         state.search = ""
@@ -1158,6 +1227,7 @@ end
 
 function Browser:OnHidden()
     state.focusIds = nil
+    state.filter = nil
     state.search = ""
     state.page = 1
 
@@ -1210,6 +1280,16 @@ function Browser:Initialize()
     IRY_BrowserTitle:SetText(IRY.title)
     IRY_BrowserTabPlayers:SetText(IRY.L.BTN_PLAYERS)
     IRY_BrowserTabPending:SetText(IRY.L.BTN_PENDING)
+    IRY_BrowserFilterRenamed:SetText(IRY.L.BTN_FILTER_RENAMED)
+    IRY_BrowserFilterIcons:SetText(IRY.L.BTN_FILTER_ICONS)
+    -- Both captions are long in Russian; the smaller font lets them share the
+    -- search row at the minimum window width without clipping.
+    for _, button in ipairs({ IRY_BrowserFilterRenamed, IRY_BrowserFilterIcons }) do
+        local label = button.GetNamedChild and button:GetNamedChild("Label")
+        if label and label.SetFont then
+            label:SetFont("ZoFontGameSmall")
+        end
+    end
     IRY_BrowserHeadId:SetText(IRY.L.HEADER_ID)
     IRY_BrowserHeadName:SetText(IRY.L.HEADER_NAME)
     IRY_BrowserHeadMeta:SetText(IRY.L.HEADER_META)

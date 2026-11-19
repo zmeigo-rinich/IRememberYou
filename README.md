@@ -81,6 +81,11 @@ The list is where you see and edit everything the addon learned:
 In the list you can:
 
 * search by name, `@account` or character name;
+* press **Show renamed players** to see only players you gave a custom name, or
+  **Show players with icons** for players with a manually assigned icon. At most
+  one filter is active (the active button is green); click it again to show
+  everyone. Filters are view state, not settings, and an explicit **Open in IRY**
+  lookup clears them;
 * **resize the window** by dragging its bottom-right corner — the list shows as
   many rows as fit, so a taller window means more players per page;
 * click a player to open the **detail panel**: every remembered `@account` with
@@ -275,6 +280,16 @@ delete anything by itself.
 ---
 
 ## Changelog
+
+**0.8.0**
+* a **Show renamed players** button in the list header filters it down to
+  players with a custom name; **Show players with icons** filters it down to
+  players with a manually assigned icon. At most one filter is active and
+  clicking it again shows everyone; both are temporary views that an explicit
+  **Open in IRY** lookup clears. The default window is 760 px wide so both
+  captions fit next to the search box;
+* the icon picker no longer opens as a grid of empty squares: tiles are painted
+  only after the window is visible.
 
 **0.7.0**
 * **Open in IRY** in the guild roster, friends list and group list context
